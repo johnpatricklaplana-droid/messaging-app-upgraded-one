@@ -1,8 +1,8 @@
 import { COLORS } from "@/constants/themeMyVersion";
 import { supabase } from "@/lib/supabase";
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { ArrowLeft, Mic, MoreVertical, Phone, Plus, SendHorizontalIcon, Smile, Video } from "lucide-react-native";
-import { useEffect, useState } from "react";
+import { ArrowLeft, MoreVertical, Phone, Plus, SendHorizontalIcon, Video } from "lucide-react-native";
+import { useEffect, useRef, useState } from "react";
 import { Animated, Image, Keyboard, KeyboardEvent, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -38,21 +38,40 @@ export default function Chat() {
     const route = useRoute();
     const { myId, otherSideId } = route.params as { myId: string; otherSideId: string; };
 
-    console.log(myId);
-    console.log(otherSideId);
 
-    const [messages, setMessages] = useState([]);
+    interface Message {
+        sentAt: string;
+        messageId: string,
+        sender_id: string,
+        text_message: string,
+        me: boolean
+    };
+
+    interface KaChat {
+        avatarUrl: string,
+        name: string
+    }
+
+    const [messages, setMessages] = useState<Message[]>([]);
     const [conversationId, setConversationId] = useState<string | null>(null);
+    const [textMessage, setTextMessage] = useState("");
+    const [kaChatProfile, setKaChatProfile] = useState<KaChat | null>(null);
+
+    const ScrollViewRef = useRef<ScrollView>(null);
 
     useEffect(() => {
         const getMessagesIfExist = async () => {
 
+            console.log("MYID: " + myId);
+            console.log("OTHERSIDEID: " + otherSideId);
             const { data, error } = await supabase
-                .from('direct_conversation')
+                .from('direct_conversation') 
                 .select('id')
-                .or(`participant_1.eq.${myId},participant_2.eq.${myId}`);
+                .or(`and(participant_1.eq.${myId.trim()},participant_2.eq.${otherSideId.trim()}),and(participant_1.eq.${otherSideId.trim()},participant_2.eq.${myId.trim()})`)
 
+                
             console.log(data);
+            console.log("why");
             console.log(error);
 
             setConversationId(data?.[0].id || null);
@@ -63,37 +82,131 @@ export default function Chat() {
         
     }, []);
 
-    const sendMessage = () => {
+    const getMessages = async () => {
+        const { data, error } = await supabase
+            .from('messages')
+            .select('*')
+            .eq('conversation_id', conversationId);
+
+            console.log(data);
         
+        setMessages((data?.map(mes => {
+
+            let me = false;
+
+            if(mes.sender_id === myId) {
+                me = true;
+            }
+
+            return {
+                messageId: mes.id,
+                sender_id: mes.sender_id,
+                sentAt: mes.created_at,
+                text_message: mes.text_message,
+                me: me
+            } 
+
+        })) ?? []);
+
+    }
+
+    const getKaChatInfo = async () => {
+        const { data, error } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', otherSideId);
+
+        console.log(data);
+        console.log(error);
+
+        setKaChatProfile({
+            name: data?.[0].full_name,
+            avatarUrl: data?.[0].avatar_url
+        });
+    }
+
+    useEffect(() => {
+        if(!conversationId) return;
+
+        const channel = supabase
+            .channel(`chat${conversationId}`)
+            .on('postgres_changes', {
+                event: 'INSERT',
+                schema: 'public',
+                table: 'messages',
+                filter: `conversation_id=eq.${conversationId}`
+            },
+            (payload) => {
+                let me = false;
+                if(payload.new.sender_id === myId) {
+                    me = true;
+                } 
+            
+                setMessages(prev => [...prev, {
+                    messageId: payload.new.id,
+                    sender_id: payload.new.sender_id,
+                    sentAt: payload.new.created_at,
+                    text_message: payload.new.text_message,
+                    me: me
+                }]);
+            }
+        ).subscribe();
+
+        getMessages();
+        getKaChatInfo();
+
+        return () => { supabase.removeChannel(channel) };
+
+    }, [conversationId]);
+
+    const sendMessage = async () => {
+        if(!conversationId) {
+            console.log("WHY IS THIS?");
+            createConversation();
+        }
+        const { data, error } = await supabase
+            .from('messages')
+            .insert({
+                text_message: textMessage,
+                conversation_id: conversationId,
+                sender_id: myId
+            });
+
+            console.log(data);
+            console.log(error);
+        
+        setTextMessage("");
+        Keyboard.dismiss();
     };
 
-    const messagesMock = [
-        { message: "heeehhe", sender: "johny", time: '9:20am', me: false },
-        { message: "God will a way when there seems to be no way", sender: "johny", time: '10:20am', me: true },
-        { message: "He loves in ways we cannot see He will make a way for", sender: "hey", time: '11:20am', me: false },
-        { message: "He will be my guide hold closely to His side", sender: "johny", time: '12:20am', me: true },
-        { message: "He will be my guide hold  to His side", sender: "hey", time: '3:20am', me: true },
-        { message: "He will be my guide  closely to His side", sender: "johny", time: '4:20am', me: false },
-        { message: "He will be my  hold closely to His side", sender: "hey", time: '8:20am', me: true },
-    ];
+    const createConversation = async () => {
+        console.log(myId);
+        console.log(otherSideId);
+        const { data, error } = await supabase.rpc('create_direct_conversation', {
+            p_participant_1: myId,
+            p_participant_2: otherSideId,
+        });
+
+        console.log(data);
+        console.log(error);
+    };
 
     return (
         <SafeAreaView style={{ backgroundColor: COLORS.background, flex: 1 }}>
                 <Animated.View
                     style={{ flex: 1, paddingBottom: keyboardHeight }}
                 >
-                    <View style={{ paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 1, borderBottomColor: COLORS.divider }}>
+                    <View style={{ paddingHorizontal: 16, paddingVertical: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 1, borderBottomColor: COLORS.divider }}>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                             <Pressable onPress={() => navigation.goBack()}><ArrowLeft color={COLORS.primary}></ArrowLeft></Pressable>
                             <Image
-                                source={{ uri: 'https://picsum.photos/200/300?random=2' }}
+                                source={{ uri: kaChatProfile?.avatarUrl }}
                                 height={50}
                                 width={50}
                                 style={{ borderRadius: 50, borderColor: COLORS.tabBorder, borderWidth: 1 }}
                             />
                             <View>
-                                <Text style={{ lineHeight: 20, fontWeight: 700, color: COLORS.textPrimary, fontSize: 22 }}>Jonas lee</Text>
-                                <Text style={{ color: COLORS.online, fontSize: 12 }}>Active now</Text>
+                                <Text style={{ lineHeight: 20, fontWeight: 700, color: COLORS.textPrimary, fontSize: 22 }}>{kaChatProfile?.name}</Text>
                             </View>
                         </View>
                         <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -103,27 +216,31 @@ export default function Chat() {
                         </View>
                     </View>
                     <ScrollView
+                        ref={ScrollViewRef}
+                        onContentSizeChange={() => 
+                            ScrollViewRef.current?.scrollToEnd({ animated: true })
+                        }
                         contentContainerStyle={{ paddingHorizontal: 22, }}
                     >
                     {conversationId 
-                        ? messagesMock.map(mes => {
+                        ? messages.map(mes => {
                             if (mes.me) {
                                 return (
                                     <View
-                                        style={{ marginBottom: 8, gap: 8, flexDirection: 'row', alignItems: 'flex-end', maxWidth: '80%', alignSelf: 'flex-end' }}
-                                        key={mes.message}
+                                        style={{ marginTop: 8, marginBottom: 8, gap: 8, flexDirection: 'row', alignItems: 'flex-end', maxWidth: '80%', alignSelf: 'flex-end' }}
+                                        key={mes.sentAt}
                                     >
                                         <View>
-                                            <Text style={{ borderBottomRightRadius: 5, padding: 16, borderRadius: 16, backgroundColor: COLORS.primary, color: COLORS.textPrimary }}>{mes.message}</Text>
-                                            <Text style={{ color: COLORS.textPrimary, fontWeight: 700, fontSize: 12, textAlign: 'right' }}>{mes.time}</Text>
+                                            <Text style={{ borderBottomRightRadius: 5, padding: 16, borderRadius: 16, backgroundColor: COLORS.primary, color: COLORS.textPrimary }}>{mes.text_message}</Text>
+                                            <Text style={{ color: COLORS.textPrimary, fontWeight: 700, fontSize: 12, textAlign: 'right' }}>{mes.sentAt}</Text>
                                         </View>
                                     </View>
                                 );
                             } else {
                                 return (
                                     <View
-                                        style={{ marginBottom: 8, gap: 8, flexDirection: 'row', alignItems: 'flex-end', maxWidth: '80%' }}
-                                        key={mes.message}
+                                        style={{ marginTop: 8, marginBottom: 8, gap: 8, flexDirection: 'row', alignItems: 'flex-end', maxWidth: '80%' }}
+                                        key={mes.sentAt}
                                     >
                                         <Image
                                             source={{ uri: 'https://picsum.photos/200/300?random=2' }}
@@ -132,8 +249,8 @@ export default function Chat() {
                                             style={{ borderRadius: 50 }}
                                         ></Image>
                                         <View>
-                                            <Text style={{ borderBottomLeftRadius: 5, padding: 16, borderRadius: 16, backgroundColor: COLORS.primaryTint, color: COLORS.textPrimary }}>{mes.message}</Text>
-                                            <Text style={{ color: COLORS.textPrimary, fontWeight: 700, fontSize: 12 }}>{mes.time}</Text>
+                                            <Text style={{ borderBottomLeftRadius: 5, padding: 16, borderRadius: 16, backgroundColor: COLORS.primaryTint, color: COLORS.textPrimary }}>{mes.text_message}</Text>
+                                            <Text style={{ color: COLORS.textPrimary, fontWeight: 700, fontSize: 12 }}>{mes.sentAt}</Text>
                                         </View>
                                     </View>
                                 );
@@ -170,18 +287,27 @@ export default function Chat() {
                                 </Pressable>
                         </View>}
                     </ScrollView>
-                    <View style={{ flexDirection: 'row', padding: 16, alignItems: "center", justifyContent: 'space-between', borderTopColor: COLORS.divider, borderTopWidth: 1 }}>
+                    <View style={{ gap: 8, flexDirection: 'row', padding: 16, alignItems: "center", justifyContent: 'space-between', borderTopColor: COLORS.divider, borderTopWidth: 1 }}>
                         <Plus color={COLORS.textSecondary}></Plus>
-                        <View style={{ flexDirection: "row", alignItems: 'center', gap: 8, backgroundColor: COLORS.inputs, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 16 }}>
-                            <TextInput placeholderTextColor={COLORS.textMuted} style={{}} placeholder="write some message"></TextInput>
-                            <Smile color={COLORS.textMuted}></Smile>
-                            <Mic color={COLORS.textMuted}></Mic>
+                        <View style={{ flex: 1, position: 'relative', flexDirection: "row", alignItems: 'center', gap: 8, backgroundColor: COLORS.inputs, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 16 }}>
+                            <TextInput 
+                                key={"messaging-input"}
+                                placeholderTextColor={COLORS.textMuted} 
+                                style={{ color: COLORS.textPrimary, width: '100%' }} 
+                                placeholder="write some message"
+                                onChangeText={setTextMessage}
+                                value={textMessage}
+                            ></TextInput>
+                            {/* <View style={{ flexDirection: 'row', position: 'absolute', right: 8 }}>
+                                <Smile color={COLORS.textMuted}></Smile>
+                                <Mic color={COLORS.textMuted}></Mic>
+                            </View> */}
                         </View>
                         <Pressable 
                             style={{ 
                                 backgroundColor: COLORS.primary, 
                                 padding: 8, 
-                                borderRadius: 50 
+                                borderRadius: 50,
                             }}
                             onPress={sendMessage}
                         >
