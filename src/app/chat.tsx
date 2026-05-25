@@ -1,7 +1,8 @@
 import { COLORS } from "@/constants/themeMyVersion";
+import { supabase } from "@/lib/supabase";
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { ArrowLeft, Mic, MoreVertical, Phone, Plus, SendHorizontalIcon, Smile, Video } from "lucide-react-native";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Animated, Image, Keyboard, KeyboardEvent, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -9,6 +10,7 @@ export default function Chat() {
 
     const keyboardHeight = new Animated.Value(0);
 
+    // KEYBOARD ANIMATION
     useEffect(() => {
         const showSub = Keyboard.addListener('keyboardDidShow', (e: KeyboardEvent) => {
             Animated.timing(keyboardHeight, {
@@ -34,14 +36,38 @@ export default function Chat() {
 
     const navigation = useNavigation();
     const route = useRoute();
-    const item = (route.params as any)?.item || { profilePic: 'https://picsum.photos/200/300?random=2', name: 'unknown' };
+    const { myId, otherSideId } = route.params as { myId: string; otherSideId: string; };
+
+    console.log(myId);
+    console.log(otherSideId);
+
+    const [messages, setMessages] = useState([]);
+    const [conversationId, setConversationId] = useState<string | null>(null);
 
     useEffect(() => {
-        console.log('chat mounted');
-        return () => console.log('chat unmounted');
+        const getMessagesIfExist = async () => {
+
+            const { data, error } = await supabase
+                .from('direct_conversation')
+                .select('id')
+                .or(`participant_1.eq.${myId},participant_2.eq.${myId}`);
+
+            console.log(data);
+            console.log(error);
+
+            setConversationId(data?.[0].id || null);
+
+        };
+
+        getMessagesIfExist();
+        
     }, []);
 
-    const messages = [
+    const sendMessage = () => {
+        
+    };
+
+    const messagesMock = [
         { message: "heeehhe", sender: "johny", time: '9:20am', me: false },
         { message: "God will a way when there seems to be no way", sender: "johny", time: '10:20am', me: true },
         { message: "He loves in ways we cannot see He will make a way for", sender: "hey", time: '11:20am', me: false },
@@ -60,7 +86,7 @@ export default function Chat() {
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                             <Pressable onPress={() => navigation.goBack()}><ArrowLeft color={COLORS.primary}></ArrowLeft></Pressable>
                             <Image
-                                source={{ uri: item.profilePic }}
+                                source={{ uri: 'https://picsum.photos/200/300?random=2' }}
                                 height={50}
                                 width={50}
                                 style={{ borderRadius: 50, borderColor: COLORS.tabBorder, borderWidth: 1 }}
@@ -79,8 +105,8 @@ export default function Chat() {
                     <ScrollView
                         contentContainerStyle={{ paddingHorizontal: 22, }}
                     >
-                        <Text style={{ color: COLORS.textMuted, textAlign: 'center', marginVertical: 16, }}>Today</Text>
-                        {messages.map(mes => {
+                    {conversationId 
+                        ? messagesMock.map(mes => {
                             if (mes.me) {
                                 return (
                                     <View
@@ -112,7 +138,37 @@ export default function Chat() {
                                     </View>
                                 );
                             }
-                        })}
+                        }) 
+                        : <View style={{ margin: 'auto', alignItems: 'center', paddingTop: '40%'  }}>
+                            <Image 
+                                width={100} 
+                                height={100}
+                                style={{ borderRadius: 50, margin: 8 }}
+                                source={{ uri: 'https://picsum.photos/200/300?random=2000'}}
+                            >
+
+                            </Image>
+                            <Text style={{ textAlign: 'center', color: COLORS.textPrimary, fontSize: 22, marginBottom: 4, fontWeight: 700 }}>Jonas Sam Inasal</Text>
+                            <Text style={{ textAlign: "center", fontSize: 12, marginBottom: 22, color: COLORS.textMuted }}>johnyHeyDaddy@gmail.com</Text>
+                            <Text style={{ color: COLORS.textSecondary, textAlign: "center", marginBottom: 8 }}>your not connected</Text>
+                            <Text style={{ marginBottom: 16, color: COLORS.textSecondary, textAlign: "center" }}>Say hi to start the conversation!</Text>
+                            <Pressable 
+                                style={{ 
+                                    backgroundColor: COLORS.primaryTint, 
+                                    borderColor: COLORS.primary, 
+                                    borderWidth: 1, 
+                                    borderRadius: 16, 
+                                    flexDirection: 'row', 
+                                    gap: 8,
+                                    paddingHorizontal: 16,
+                                    paddingVertical: 8,
+                                    justifyContent: 'center'
+                                    }}
+                                >
+                                    <Text>👏</Text>
+                                    <Text style={{ color: COLORS.primaryLight }}>Hey Daddy</Text>
+                                </Pressable>
+                        </View>}
                     </ScrollView>
                     <View style={{ flexDirection: 'row', padding: 16, alignItems: "center", justifyContent: 'space-between', borderTopColor: COLORS.divider, borderTopWidth: 1 }}>
                         <Plus color={COLORS.textSecondary}></Plus>
@@ -121,7 +177,14 @@ export default function Chat() {
                             <Smile color={COLORS.textMuted}></Smile>
                             <Mic color={COLORS.textMuted}></Mic>
                         </View>
-                        <Pressable style={{ backgroundColor: COLORS.primary, padding: 8, borderRadius: 50 }}>
+                        <Pressable 
+                            style={{ 
+                                backgroundColor: COLORS.primary, 
+                                padding: 8, 
+                                borderRadius: 50 
+                            }}
+                            onPress={sendMessage}
+                        >
                             <SendHorizontalIcon color={COLORS.textPrimary}></SendHorizontalIcon>
                         </Pressable>
                     </View>

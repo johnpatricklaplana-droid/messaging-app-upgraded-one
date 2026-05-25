@@ -1,5 +1,8 @@
 import { COLORS } from "@/constants/themeMyVersion";
+import { useUser } from "@/context/UserContext";
 import { supabase } from "@/lib/supabase";
+import { useNavigation } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Search } from 'lucide-react-native';
 import { useEffect, useState } from "react";
 import { Image, Pressable, ScrollView, Text, TextInput, View } from "react-native";
@@ -7,6 +10,18 @@ import { Timestamp } from "react-native-reanimated/lib/typescript/commonTypes";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function People () {
+
+    const user = useUser();
+
+    const myId = user.user?.id;
+
+    type RootStackParamList = {
+        'Chat': {
+            myId: string | null, otherSideId: string
+        }
+    };
+
+    const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
     interface People {
         id: string;
@@ -23,13 +38,13 @@ export default function People () {
             const { data, error } = await supabase.from('profiles').select('*');
             setPeople(data ?? []);
             console.log(data);
+            console.log("why");
             console.log(error);
         };
          
         getPeople();
 
     }, []);
-
 
     return (
         <SafeAreaView edges={['top']} style={{ paddingHorizontal: 16 }}>
@@ -49,7 +64,17 @@ export default function People () {
                             <Image width={50} height={50} style={{ borderRadius: 50 }} source={{ uri: p.avatar_url }}></Image>
                             <Text style={{ color: COLORS.textPrimary, fontSize: 16 }}>{p.full_name}</Text>
                         </View>
-                        <Pressable style={{ backgroundColor: COLORS.primary, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 16 }}><Text style={{ fontWeight: 700, color: COLORS.textPrimary }}>Message</Text></Pressable>
+                        <Pressable 
+                            style={{ 
+                                backgroundColor: COLORS.primary, 
+                                paddingHorizontal: 16, 
+                                paddingVertical: 8, 
+                                borderRadius: 16 
+                            }}
+                            onPress={() => navigation.navigate('Chat', { myId: myId ?? null, otherSideId: p.id })}
+                        >   
+                            <Text style={{ fontWeight: 700, color: COLORS.textPrimary }}>Message</Text>
+                        </Pressable>
                     </View>
                 )}
             </ScrollView>

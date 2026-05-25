@@ -6,6 +6,9 @@ import 'react-native-url-polyfill/auto';
 const supabaseUrl = Constants.expoConfig?.extra?.supabaseUrl;
 const supabaseAnonKey = Constants.expoConfig?.extra?.supabaseAnonKey;
 
+console.log(supabaseUrl);
+console.log(supabaseAnonKey);
+
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     auth: {
         persistSession: true,
