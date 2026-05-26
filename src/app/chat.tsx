@@ -6,6 +6,16 @@ import { useEffect, useRef, useState } from "react";
 import { Animated, Image, Keyboard, KeyboardEvent, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+export async function getDirectConversationId(myId: string, otherSideId: string) {
+    const { data, error } = await supabase
+        .from('direct_conversation')
+        .select('id')
+        .or(`and(participant_1.eq.${myId.trim()},participant_2.eq.${otherSideId.trim()}),and(participant_1.eq.${otherSideId.trim()},participant_2.eq.${myId.trim()})`);
+
+    return data;
+
+}
+
 export default function Chat() {
 
     const keyboardHeight = new Animated.Value(0);
@@ -62,17 +72,7 @@ export default function Chat() {
     useEffect(() => {
         const getMessagesIfExist = async () => {
 
-            console.log("MYID: " + myId);
-            console.log("OTHERSIDEID: " + otherSideId);
-            const { data, error } = await supabase
-                .from('direct_conversation') 
-                .select('id')
-                .or(`and(participant_1.eq.${myId.trim()},participant_2.eq.${otherSideId.trim()}),and(participant_1.eq.${otherSideId.trim()},participant_2.eq.${myId.trim()})`)
-
-                
-            console.log(data);
-            console.log("why");
-            console.log(error);
+            const data = await getDirectConversationId(myId, otherSideId);
 
             setConversationId(data?.[0].id || null);
 
@@ -86,9 +86,8 @@ export default function Chat() {
         const { data, error } = await supabase
             .from('messages')
             .select('*')
-            .eq('conversation_id', conversationId);
-
-            console.log(data);
+            .eq('conversation_id', conversationId)
+            .order('created_at', { ascending: true });
         
         setMessages((data?.map(mes => {
 
@@ -115,9 +114,6 @@ export default function Chat() {
             .from('profiles')
             .select('*')
             .eq('id', otherSideId);
-
-        console.log(data);
-        console.log(error);
 
         setKaChatProfile({
             name: data?.[0].full_name,
@@ -161,7 +157,6 @@ export default function Chat() {
 
     const sendMessage = async () => {
         if(!conversationId) {
-            console.log("WHY IS THIS?");
             createConversation();
         }
         const { data, error } = await supabase
@@ -171,24 +166,16 @@ export default function Chat() {
                 conversation_id: conversationId,
                 sender_id: myId
             });
-
-            console.log(data);
-            console.log(error);
         
         setTextMessage("");
         Keyboard.dismiss();
     };
 
     const createConversation = async () => {
-        console.log(myId);
-        console.log(otherSideId);
         const { data, error } = await supabase.rpc('create_direct_conversation', {
             p_participant_1: myId,
             p_participant_2: otherSideId,
         });
-
-        console.log(data);
-        console.log(error);
     };
 
     return (

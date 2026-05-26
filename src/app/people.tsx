@@ -37,9 +37,6 @@ export default function People () {
         const getPeople = async () => {
             const { data, error } = await supabase.from('profiles').select('*');
             setPeople(data ?? []);
-            console.log(data);
-            console.log("why");
-            console.log(error);
         };
          
         getPeople();

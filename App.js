@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { getFocusedRouteNameFromRoute, NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { useEffect, useState } from 'react';
 import 'react-native-gesture-handler';
@@ -38,9 +38,7 @@ function TabGroup () {
                 name='Messages'
                 component={Messages}
                 options={({ route }) => ({
-                    tabBarStyle: getFocusedRouteNameFromRoute(route) === 'Chat'
-                        ? { display: 'none' }
-                        : {
+                    tabBarStyle: {
                             backgroundColor: COLORS.background,
                             borderColor: COLORS.divider,
                             marginBottom: 8
