@@ -5,6 +5,7 @@ import { ArrowLeft, MoreVertical, Phone, Plus, SendHorizontalIcon, Video } from 
 import { useEffect, useRef, useState } from "react";
 import { Animated, Image, Keyboard, KeyboardEvent, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { formatMessageTime } from "./helper.tsx/formatDate";
 
 export async function getDirectConversationId(myId: string, otherSideId: string) {
     const { data, error } = await supabase
@@ -48,7 +49,6 @@ export default function Chat() {
     const route = useRoute();
     const { myId, otherSideId } = route.params as { myId: string; otherSideId: string; };
 
-
     interface Message {
         sentAt: string;
         messageId: string,
@@ -74,7 +74,7 @@ export default function Chat() {
 
             const data = await getDirectConversationId(myId, otherSideId);
 
-            setConversationId(data?.[0].id || null);
+            setConversationId(data?.[0]?.id || null);
 
         };
 
@@ -82,12 +82,17 @@ export default function Chat() {
         
     }, []);
 
+    console.log("CONVERSATIONID");
+    console.log(conversationId);
+
     const getMessages = async () => {
         const { data, error } = await supabase
             .from('messages')
             .select('*')
             .eq('conversation_id', conversationId)
-            .order('created_at', { ascending: true });
+            .order('created_at', { ascending: false });
+
+        const sortedData = data?.reverse();
         
         setMessages((data?.map(mes => {
 
@@ -100,7 +105,7 @@ export default function Chat() {
             return {
                 messageId: mes.id,
                 sender_id: mes.sender_id,
-                sentAt: mes.created_at,
+                sentAt: formatMessageTime(mes.created_at),
                 text_message: mes.text_message,
                 me: me
             } 
@@ -141,7 +146,7 @@ export default function Chat() {
                 setMessages(prev => [...prev, {
                     messageId: payload.new.id,
                     sender_id: payload.new.sender_id,
-                    sentAt: payload.new.created_at,
+                    sentAt: formatMessageTime(payload.new.created_at),
                     text_message: payload.new.text_message,
                     me: me
                 }]);
@@ -205,38 +210,53 @@ export default function Chat() {
                     <ScrollView
                         ref={ScrollViewRef}
                         onContentSizeChange={() => 
-                            ScrollViewRef.current?.scrollToEnd({ animated: true })
+                            ScrollViewRef.current?.scrollToEnd({ animated: false })
                         }
-                        contentContainerStyle={{ paddingHorizontal: 22, }}
+                        contentContainerStyle={{ paddingHorizontal: 22 }}
                     >
                     {conversationId 
-                        ? messages.map(mes => {
+                        ? messages.map((mes, i) => {
                             if (mes.me) {
                                 return (
                                     <View
                                         style={{ marginTop: 8, marginBottom: 8, gap: 8, flexDirection: 'row', alignItems: 'flex-end', maxWidth: '80%', alignSelf: 'flex-end' }}
-                                        key={mes.sentAt}
+                                        key={i}
                                     >
                                         <View>
-                                            <Text style={{ borderBottomRightRadius: 5, padding: 16, borderRadius: 16, backgroundColor: COLORS.primary, color: COLORS.textPrimary }}>{mes.text_message}</Text>
+                                            <Pressable style={({ pressed }) => ({
+                                                borderBottomRightRadius: 5, 
+                                                padding: 16, borderRadius: 16, 
+                                                backgroundColor: pressed ? COLORS.primaryLight : COLORS.primary, 
+                                                transform: [{ scale: pressed ? 0.95 : 1 }]
+                                            })}><Text style={{ color: COLORS.textPrimary }}>{mes.text_message}</Text>
+                                            </Pressable>
                                             <Text style={{ color: COLORS.textPrimary, fontWeight: 700, fontSize: 12, textAlign: 'right' }}>{mes.sentAt}</Text>
                                         </View>
                                     </View>
                                 );
                             } else {
+
                                 return (
                                     <View
                                         style={{ marginTop: 8, marginBottom: 8, gap: 8, flexDirection: 'row', alignItems: 'flex-end', maxWidth: '80%' }}
-                                        key={mes.sentAt}
+                                        key={i}
                                     >
                                         <Image
-                                            source={{ uri: 'https://picsum.photos/200/300?random=2' }}
+                                            source={{ uri: kaChatProfile?.avatarUrl }}
                                             width={32}
                                             height={32}
                                             style={{ borderRadius: 50 }}
                                         ></Image>
                                         <View>
-                                            <Text style={{ borderBottomLeftRadius: 5, padding: 16, borderRadius: 16, backgroundColor: COLORS.primaryTint, color: COLORS.textPrimary }}>{mes.text_message}</Text>
+                                            <Pressable style={({ pressed }) => ({
+                                                borderBottomLeftRadius: 5, 
+                                                padding: 16, 
+                                                borderRadius: 16, 
+                                                backgroundColor: pressed ? 'rgba(0,0,0,0.1)' : COLORS.primaryTint,
+                                                transform: [{ scale: pressed ? 0.9 : 1 }]
+                                            })}>
+                                                <Text style={{ color: COLORS.textPrimary }}>{mes.text_message}</Text>
+                                            </Pressable>
                                             <Text style={{ color: COLORS.textPrimary, fontWeight: 700, fontSize: 12 }}>{mes.sentAt}</Text>
                                         </View>
                                     </View>
@@ -291,11 +311,11 @@ export default function Chat() {
                             </View> */}
                         </View>
                         <Pressable 
-                            style={{ 
-                                backgroundColor: COLORS.primary, 
-                                padding: 8, 
+                            style={({ pressed }) => ({
+                                backgroundColor: pressed ? COLORS.primaryTint : COLORS.primary,
+                                padding: 8,
                                 borderRadius: 50,
-                            }}
+                            })}
                             onPress={sendMessage}
                         >
                             <SendHorizontalIcon color={COLORS.textPrimary}></SendHorizontalIcon>
