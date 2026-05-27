@@ -7,10 +7,13 @@ import Svg, { Path } from 'react-native-svg';
 import { supabase } from '../../lib/supabase';
 
 async function handleGoogleSignIn() {
+
+    await supabase.auth.signOut();    
+
     const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-            skipBrowserRedirect: true,
+            skipBrowserRedirect: false,
             redirectTo: 'messagingapplastone://auth'
         }
     })
@@ -27,6 +30,7 @@ async function handleGoogleSignIn() {
     console.log('result', JSON.stringify(result));
 
     if (result.type === 'success') {
+        await supabase.auth.signOut();
         const url = result.url;
         const params = new URLSearchParams(url.split('#')[1]);
         const access_token = params.get('access_token');

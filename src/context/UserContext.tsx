@@ -15,6 +15,7 @@ export function UserProvider({ children } : { children: ReactNode } ) {
 
     useEffect(() => {
         supabase.auth.getUser().then(({ data: { user } }) => {
+            console.log();
             setUser(user);
             setLoading(false);
         });

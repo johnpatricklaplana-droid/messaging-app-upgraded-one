@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
@@ -14,6 +15,14 @@ import { UserProvider } from './src/context/UserContext';
 import { supabase } from './src/lib/supabase';
 
 const MessageStack = createStackNavigator();
+
+async function name() {
+    const keys = await AsyncStorage.getAllKeys();
+    console.log("KEYS: +++++++++++++");
+    console.log(keys);
+}
+
+name();
 
 const Tab = createBottomTabNavigator();
 
@@ -73,28 +82,24 @@ export default function TabLayout() {
 
     const [session, setSession] = useState(null);
     const [loading, setLoading] = useState(true);
-
     useEffect(() => {
-        supabase.auth.getSession().then(({ data: { session } }) => {
-            setSession(session);
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
             setLoading(false);
-        });
-
-        supabase.auth.onAuthStateChange((_event, session) => {
             setSession(session);
-           
-            if(_event === 'SIGNED_OUT') {
-                setSession(null);
-            }
         });
-    }, []);
 
-    if (loading) return null;
+        return () => subscription.unsubscribe();
+
+    }, []);
+     console.log(loading);
+    if(loading) return null;
 
     return (
         <NavigationContainer>
             <UserProvider>
-                <RootStack.Navigator screenOptions={{ headerShown: false }}>
+                <RootStack.Navigator 
+                    screenOptions={{ headerShown: false }}
+                >
                     {session ? (
                         <RootStack.Screen name="Tabs" component={TabGroup} />
                     ) : (
