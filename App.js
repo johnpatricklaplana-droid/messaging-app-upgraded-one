@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react';
 import 'react-native-gesture-handler';
 import LoginScreen from './src/app/auth/loginScreen';
 import Chat from './src/app/chat';
+import CreateGroupChat from './src/app/createGroupChat';
 import Messages from './src/app/messages';
 import People from './src/app/people';
 import Profile from './src/app/profile';
@@ -106,6 +107,7 @@ export default function TabLayout() {
                         <RootStack.Screen name="Login" component={LoginScreen} />
                     )}
                     <RootStack.Screen name='Chat' component={Chat} />
+                    <RootStack.Screen options={{ headerTintColor: COLORS.textPrimary, headerShown: true, headerStyle: { backgroundColor: COLORS.background, borderColor: COLORS.divider, borderBottomWidth: 1 } }} name='CreateGroupChat' component={CreateGroupChat} />
                 </RootStack.Navigator>
             </UserProvider>
         </NavigationContainer>

@@ -6,9 +6,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Svg, { Path } from 'react-native-svg';
 import { supabase } from '../../lib/supabase';
 
-async function handleGoogleSignIn() {
-
-    await supabase.auth.signOut();    
+async function handleGoogleSignIn() { 
 
     const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',

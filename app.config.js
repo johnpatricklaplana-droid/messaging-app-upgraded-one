@@ -34,7 +34,7 @@ export default {
         {
           backgroundColor: "#208AEF",
           android: {
-            image: "./assets/images/splash-icon.png",
+            image: "./assets/images/react-logo@3x.png",
             imageWidth: 76
           }
         }

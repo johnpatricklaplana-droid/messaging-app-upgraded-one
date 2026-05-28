@@ -3,7 +3,7 @@ import { useUser } from "@/context/UserContext";
 import { supabase } from "@/lib/supabase";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { MoreVertical, Pencil } from 'lucide-react-native';
+import { MoreVertical, UserPlus } from 'lucide-react-native';
 import { useEffect, useState } from "react";
 import { Image, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -31,6 +31,7 @@ export default function Messages() {
     type RootStackParamList = {
         Messages: undefined;
         Chat: { myId: string | undefined; otherSideId: string };
+        CreateGroupChat: undefined;
     };
 
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -106,8 +107,12 @@ export default function Messages() {
             <ScrollView contentContainerStyle={{ }}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 24, paddingBottom: 0 }}>
                     <Text style={{ color: COLORS.textPrimary, fontSize: 32, fontWeight: 700 }}>Messages</Text>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                        <Pencil width={22} color={COLORS.textSecondary}></Pencil>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+                        <Pressable 
+                            onPress={() => navigation.navigate("CreateGroupChat")}
+                        >
+                            <UserPlus width={22} height={22} color={COLORS.textSecondary}></UserPlus>
+                        </Pressable>
                         <MoreVertical width={22} color={COLORS.textSecondary}></MoreVertical>
                     </View>
                 </View>
