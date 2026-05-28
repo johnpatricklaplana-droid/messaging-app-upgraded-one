@@ -1,11 +1,19 @@
 import { COLORS } from "@/constants/themeMyVersion";
+import { useUser } from "@/context/UserContext";
+import { supabase } from "@/lib/supabase";
+import * as Crypto from 'expo-crypto';
 import * as ImagePicker from 'expo-image-picker';
 import { CheckCircleIcon, Circle, ImagePlusIcon, XCircleIcon } from "lucide-react-native";
-import { ReactNode, useState } from "react";
+import { useEffect, useState } from "react";
 import { Image, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { getRelatedPeople } from "./api/supabase_queries";
 
 export default function CreateGroupChat () {
+
+    const user = useUser();
+
+    const myId = user.user?.id;
 
     const pickImage = async () => {
         const result = await ImagePicker.launchImageLibraryAsync({
@@ -21,30 +29,50 @@ export default function CreateGroupChat () {
         }
     };
 
+    async function uploadAvatar(uri: string) {
+        console.log(uri);
+        const fileExt = 'jpeg';
+        const fileName = `${Crypto.randomUUID()}.${fileExt}`;
+        
+        const file = {
+            uri,
+            name: fileName,
+            type: `image/${fileExt}`
+        } as any;
+
+        const { data, error } = await supabase.storage
+            .from('group chat avatar storage')
+            .upload(fileName, file, {
+                contentType: `image/${fileExt}`
+            });
+
+        if (error) {
+            throw error;
+        }
+
+        console.log(data);
+
+        // get public url
+        const { data: publicUrlData } = supabase.storage
+            .from('group chat avatar storage')
+            .getPublicUrl(fileName);
+
+        return publicUrlData.publicUrl;
+    }
+
     interface MembersMaybe {
-        id: string;
-        image: string;
-        name: string;
-        circle: ReactNode;
+        id: any;
+        image: any;
+        name: any;
         checked: boolean;
     };
 
-    const membersMaybe: MembersMaybe[] = [
-        { id: '1', image: 'https://picsum.photos/200/300?random=1', name: 'johny', circle: <Circle color={COLORS.textSecondary} />, checked: false },
-        { id: '2', image: 'https://picsum.photos/200/300?random=2', name: 'hey', circle: <Circle color={COLORS.textSecondary} />, checked: false },
-        { id: '3', image: 'https://picsum.photos/200/300?random=3', name: 'daddy', circle: <Circle color={COLORS.textSecondary} />, checked: false },
-        { id: '4', image: 'https://picsum.photos/200/300?random=4', name: 'rasma', circle: <Circle color={COLORS.textSecondary} />, checked: false },
-        { id: '5', image: 'https://picsum.photos/200/300?random=5', name: 'jonas', circle: <Circle color={COLORS.textSecondary} />, checked: false },
-        { id: '6', image: 'https://picsum.photos/200/300?random=6', name: 'michael jackson', circle: <Circle color={COLORS.textSecondary} />, checked: false },
-        { id: '7', image: 'https://picsum.photos/200/300?random=7', name: 'hehe', circle: <Circle color={COLORS.textSecondary} />, checked: false },
-        { id: '8', image: 'https://picsum.photos/200/300?random=8', name: 'lebron james', circle: <Circle color={COLORS.textSecondary} />, checked: false },
-    ];
-
-    const [members, setMembers] = useState<MembersMaybe[]>(membersMaybe);
+    const [members, setMembers] = useState<MembersMaybe[] | undefined>([]);
     const [avatar, setAvatar] = useState<string>('');
+    const [groupName, setGroupName] = useState<string>('');
 
     const handleAdding = (id: string) => {
-        const updateCheck = members.map(m => {
+        const updateCheck = members?.map(m => {
             if(m.id === id) {
                 if(m.checked) {
                     m.checked = false;
@@ -56,6 +84,37 @@ export default function CreateGroupChat () {
         });
         setMembers(updateCheck);
     };
+
+    const createOne = async () => {
+        const mems = members?.filter(mem => mem.checked === true);
+
+        const memsIds = mems?.map(mem => mem.id)?? [];
+
+        const uri = await uploadAvatar(avatar);
+
+        const { data, error } = await supabase.rpc('create_group_conversation', {
+            p_name: groupName,
+            p_avatar_url: uri,
+            p_member_ids: [myId, ...memsIds]
+        });
+
+        console.log(data);
+        console.log(error);
+
+    };
+
+    useEffect(() => {
+        const getPossibleMembers = async () => {
+            if(!myId) return;
+            const people = await getRelatedPeople(myId);
+            console.log("===============================");
+            console.log(people);
+            
+            setMembers(people);
+        };
+
+        getPossibleMembers();
+    }, [myId]);
 
     return (
         <SafeAreaView edges={["bottom"]} style={{ backgroundColor: COLORS.background, flex: 1 }}>
@@ -102,21 +161,25 @@ export default function CreateGroupChat () {
                 </Pressable>
                 <TextInput 
                     placeholder="Group name"
-                    placeholderTextColor={COLORS.background} 
+                    placeholderTextColor={COLORS.primary} 
+                    value={groupName}
+                    onChangeText={setGroupName}
                     style={{ 
                         backgroundColor: 'white', 
                         width: '100%', 
                         borderRadius: 16,
                         paddingHorizontal: 16,
-                        paddingVertical: 16
+                        paddingVertical: 16,
+                        color: COLORS.primary
                     }}
                 >
                     
                 </TextInput>
                 <Text style={{ color: COLORS.textSecondary, textAlign: "left", width: '100%', marginTop: 32 }}>ADD MEMBERS</Text>
                 <View>
-                    {members.map(m => 
+                    {members?.map(m => 
                         <Pressable
+                            key={m.id}
                             onPress={() => handleAdding(m.id)}
                             style={({ pressed }) => ({
                                 paddingVertical: 16,
@@ -134,7 +197,7 @@ export default function CreateGroupChat () {
                                 <Image style={{ borderRadius: 50, width: 50, height: 50 }} source={{ uri: m.image }} />
                                 <Text style={{ color: COLORS.textPrimary, fontSize: 18, fontWeight: 600, }}>{m.name}</Text>
                             </View>
-                            {m.checked ? <CheckCircleIcon color={COLORS.primary}></CheckCircleIcon> : m.circle }
+                            {m.checked ? <CheckCircleIcon color={COLORS.primary}></CheckCircleIcon> : <Circle color={COLORS.textSecondary}></Circle> }
                         </Pressable>
                     )}
                 </View>
@@ -149,6 +212,7 @@ export default function CreateGroupChat () {
                     borderRadius: 16,
                     transform: [{ scale: pressed ? 0.95 : 1 }]
                 })}
+                onPress={createOne}
             >
                 <Text 
                     style={{ 

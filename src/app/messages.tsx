@@ -89,7 +89,7 @@ export default function Messages() {
             console.log("MYSUPERIID");
         console.log(myId);
 
-        setDirectConversation([{
+        setDirectConversation(prev => [...prev, {
             profilePic: directConvoWithMembers.part_1.id !== myId ? directConvoWithMembers.part_1.avatar_url : directConvoWithMembers.part_2.avatar_url,
             name: directConvoWithMembers.part_1.id !== myId ? directConvoWithMembers.part_1.full_name : directConvoWithMembers.part_2.full_name,
             lastMessage: data.text_message,
