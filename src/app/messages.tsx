@@ -1,32 +1,20 @@
 import { COLORS } from "@/constants/themeMyVersion";
 import { useUser } from "@/context/UserContext";
-import { supabase } from "@/lib/supabase";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { MoreVertical, UserPlus } from 'lucide-react-native';
 import { useEffect, useState } from "react";
 import { Image, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { ConversationList, getDirectConversation, getGroupConversation } from "./api/supabase_queries";
 
 export default function Messages() {
 
     const user = useUser();
 
     const myId = user.user?.id;
-    console.log("I HAPPEN");
-    console.log(myId);
-
-    interface DirectConversation {
-        profilePic: string;
-        name: string;
-        lastMessage: string;
-        lastMessageTime: string;
-        senderName: string;
-        otherSideId: string,
-        myId: string | undefined
-    }
     
-    const [directConversation, setDirectConversation] = useState<DirectConversation[]>([]);
+    const [directConversation, setDirectConversation] = useState<ConversationList[]>([]);
 
     type RootStackParamList = {
         Messages: undefined;
@@ -45,62 +33,16 @@ export default function Messages() {
     }, [myId]);
 
     const getConversations = async () => {
-        const { data, error } = await supabase
-            .from('conversations')
-            .select('*');
+        if(!myId) return;
+        const converse = await getDirectConversation(myId);
+        const groupConverse = await getGroupConversation();
 
-            console.log(data);
-            console.log(error);
-
-        const directOnes = data?.filter(convo => { if(!convo.is_group) { return convo } });
-
-
-        const directConversationId = directOnes?.map(direct => {
-            return direct.id
-        });
-
-        directConversationId?.forEach(async convId => {
-            const directConvoWithMembers = await getDirectConversation(convId);
-           
-            getLastMessageFromConversation(convId, directConvoWithMembers?.[0]);
-        });
-
+        setDirectConversation([...converse, ...groupConverse]); 
     };
 
-    const getDirectConversation = async (convoId: string) => {
-        const { data, error } = await supabase
-            .from('direct_conversation')
-            .select('*, part_1:profiles!participant_1(*), part_2:participant_2(*)')
-            .eq('id', convoId);
-        
-        return data;
-    };
-
-    const getLastMessageFromConversation = async (conversationId: any, directConvoWithMembers: any) => {
-        console.log(conversationId);
-        const { data, error } = await supabase
-            .from('messages')
-            .select('*, profiles!sender_id(*)')
-            .eq('conversation_id', conversationId)
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .single();
-
-            console.log("MYSUPERIID");
-        console.log(myId);
-
-        setDirectConversation(prev => [...prev, {
-            profilePic: directConvoWithMembers.part_1.id !== myId ? directConvoWithMembers.part_1.avatar_url : directConvoWithMembers.part_2.avatar_url,
-            name: directConvoWithMembers.part_1.id !== myId ? directConvoWithMembers.part_1.full_name : directConvoWithMembers.part_2.full_name,
-            lastMessage: data.text_message,
-            lastMessageTime: data.created_at,
-            senderName: data.sender_id === directConvoWithMembers.part_1.id ? directConvoWithMembers.part_1.full_name : directConvoWithMembers.part_2.full_name,
-            otherSideId: directConvoWithMembers.part_1.id !== myId ? directConvoWithMembers.part_1.id : directConvoWithMembers.part_2.id,
-            myId: myId
-        }]);
-    };
-
-    console.log(directConversation);
+    directConversation.forEach((element, i) => {
+        console.log(element.conversationAvatar);
+    });
 
     return (
         <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: COLORS.background }}>
@@ -127,7 +69,7 @@ export default function Messages() {
                 <View style={{ marginTop: 8 }}>
                     {directConversation.map(message =>
                         <Pressable
-                            key={message?.name}
+                            key={message?.conversationName}
                             style={({ pressed }) => ({
                                 paddingVertical: 16, 
                                 paddingHorizontal: 24,
@@ -137,12 +79,17 @@ export default function Messages() {
                                 transform: [{ scale: pressed ? 0.95 : 1 }],
                                 backgroundColor: pressed ? COLORS.primaryTint : COLORS.background
                             })}
-                            onPress={() => navigation.navigate("Chat", { myId: message?.myId, otherSideId: message?.otherSideId })}
+                            // onPress={() => navigation.navigate("Chat", { myId: message?.myId, otherSideId: message?.otherSideId })}
                         >
                             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                                <Image style={{ borderRadius: 50, width: 50, height: 50 }} source={{ uri: message.profilePic }} />
+                                <Image 
+                                    style={{ borderRadius: 50, width: 50, height: 50 }} 
+                                    source={{ uri: decodeURIComponent(message.conversationAvatar) }} 
+                                    onError={(e) => console.error(e)}
+                                    onLoad={() => console.log("GOT IT")}
+                                />
                                 <View>
-                                    <Text style={{ color: COLORS.textPrimary, fontSize: 18, fontWeight: 600, }}>{message?.name}</Text>
+                                    <Text style={{ color: COLORS.textPrimary, fontSize: 18, fontWeight: 600, }}>{message?.conversationName}</Text>
                                     <Text style={{ color: COLORS.textMuted }}>{message?.senderName}: {message?.lastMessage}</Text>
                                 </View>
                             </View>

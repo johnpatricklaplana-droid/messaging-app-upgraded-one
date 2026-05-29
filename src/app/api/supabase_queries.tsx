@@ -12,14 +12,16 @@ export async function getRelatedPeople(myId: string) {
         .from('conversations')
         .select("*");
 
-    const conversationIds = data?.map(d => {
+    const conversation = data?.filter(d => {
         if(!d.is_group) {
             return d.id;
         }
     });
 
-    if(!conversationIds) return;
+    const conversationIds = conversation?.map(conv => conv.id);
 
+    if(!conversationIds) return;
+   
     return await getOtherSideOfDirectConversation(conversationIds, myId);
 
 }
@@ -55,4 +57,58 @@ export async function getProfilesOfRelatedPeople(userId: string[]) {
         image: d.avatar_url,
         checked: false
     }));
+}
+
+export interface ConversationList {
+    conversationId: string;
+    conversationAvatar: string;
+    conversationName: string;
+    lastMessage: string;
+    lastMessageTime: string;
+    senderName: string;
+};
+
+export async function getDirectConversation(myId: string) {
+
+    const directConv: ConversationList[] = [];
+
+    const { data, error } = await supabase.rpc('get_direct_conversations_with_last_message');
+
+    data.forEach((da: any) => {
+        directConv.push({
+            conversationId: da.conversation_id,
+            conversationAvatar: da.other_user_avatar,
+            conversationName: da.other_user_name,
+            lastMessage: da.last_message, 
+            lastMessageTime: da.last_message_time,
+            senderName: da.sendername
+        });
+    });
+
+    return directConv;
+
+}
+
+export async function getGroupConversation() {
+
+    const directConv: ConversationList[] = [];
+    
+    const { data, error } = await supabase.rpc('get_group_conversations_with_last_message');
+
+        console.log("PWEDE?");
+    console.log(JSON.stringify(data));
+    console.log(error);
+
+    data?.forEach((d: any) => {
+        directConv.push({
+            conversationId: d.conversation_id,
+            conversationAvatar: d.conversation_avatar,
+            conversationName: d.conversation_name,
+            lastMessage: d.last_message,
+            lastMessageTime: d.last_message_time,
+            senderName: d.sender_name
+        });
+    });
+   
+    return directConv;
 }
