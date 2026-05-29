@@ -15,6 +15,10 @@ export default function CreateGroupChat () {
 
     const myId = user.user?.id;
 
+    const [members, setMembers] = useState<MembersMaybe[] | undefined>([]);
+    const [avatar, setAvatar] = useState<any>(null);
+    const [groupName, setGroupName] = useState<string>('');
+
     const pickImage = async () => {
         const result = await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ['images'],
@@ -24,32 +28,38 @@ export default function CreateGroupChat () {
         });
 
         if (!result.canceled) {
-            console.log(result.assets[0].uri);
-            setAvatar(result.assets[0].uri);
+
+            const asset = result.assets[0];
+
+            const mimeType = asset.mimeType ?? 'image/jpeg';
+            const type = mimeType.split('/')[1];
+
+            setAvatar({
+                uri: result.assets[0].uri,
+                type: type
+            });
+            
         }
     };
 
-    async function uploadAvatar(uri: string) {
-        console.log(uri);
-        const fileExt = 'jpeg';
-        const fileName = `${Crypto.randomUUID()}.${fileExt}`;
+    async function uploadAvatar(files: any) {
+        const fileName = `${Crypto.randomUUID()}.${files.type}`;
         
-        const file = {
-            uri,
-            name: fileName,
-            type: `image/${fileExt}`
-        } as any;
+        const response = await fetch(files.uri);
+        console.log("==========REPONSE=============");
+        console.log(response);
+        const file = await response.arrayBuffer();
 
         const { data, error } = await supabase.storage
             .from('group chat avatar storage')
             .upload(fileName, file, {
-                contentType: `image/${fileExt}`
+                contentType: `image/${files.type}`
             });
 
         if (error) {
             throw error;
         }
-
+        console.log("and if you really you find there's no need to cry");
         console.log(data);
 
         // get public url
@@ -66,10 +76,6 @@ export default function CreateGroupChat () {
         name: any;
         checked: boolean;
     };
-
-    const [members, setMembers] = useState<MembersMaybe[] | undefined>([]);
-    const [avatar, setAvatar] = useState<string>('');
-    const [groupName, setGroupName] = useState<string>('');
 
     const handleAdding = (id: string) => {
         const updateCheck = members?.map(m => {
@@ -124,7 +130,7 @@ export default function CreateGroupChat () {
                     style={{ 
                         borderRadius: 50, 
                         backgroundColor: COLORS.inputs, 
-                        padding: avatar === '' ? 16 : 0, 
+                        padding: avatar === null ? 16 : 0, 
                         borderStyle: 'dashed', 
                         borderWidth: 1, 
                         borderColor: COLORS.textSecondary,
@@ -150,14 +156,14 @@ export default function CreateGroupChat () {
                         >
                         </XCircleIcon>
                     </Pressable>}
-                    {avatar === '' && <ImagePlusIcon
+                    {avatar === null && <ImagePlusIcon
                         width={44}
                         height={44}
                         color={COLORS.textSecondary}
                     >
 
                     </ImagePlusIcon>}
-                    {avatar !== '' && <Image style={{ width: 80, height: 80, borderRadius: 50 }} source={{ uri: avatar }}></Image>}
+                    {avatar !== null && <Image style={{ width: 80, height: 80, borderRadius: 50 }} source={{ uri: avatar.uri }}></Image>}
                 </Pressable>
                 <TextInput 
                     placeholder="Group name"
@@ -182,7 +188,7 @@ export default function CreateGroupChat () {
                             key={m.id}
                             onPress={() => handleAdding(m.id)}
                             style={({ pressed }) => ({
-                                paddingVertical: 16,
+                                paddingVertical: 8,
                                 paddingHorizontal: 16,
                                 borderRadius: 16,
                                 flexDirection: 'row',

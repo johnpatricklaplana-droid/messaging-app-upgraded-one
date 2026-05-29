@@ -18,7 +18,7 @@ export default function Messages() {
 
     type RootStackParamList = {
         Messages: undefined;
-        Chat: { myId: string | undefined; otherSideId: string };
+        Chat: { conversationIdFromMessages: string | undefined };
         CreateGroupChat: undefined;
     };
 
@@ -39,10 +39,6 @@ export default function Messages() {
 
         setDirectConversation([...converse, ...groupConverse]); 
     };
-
-    directConversation.forEach((element, i) => {
-        console.log(element.conversationAvatar);
-    });
 
     return (
         <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: COLORS.background }}>
@@ -79,7 +75,7 @@ export default function Messages() {
                                 transform: [{ scale: pressed ? 0.95 : 1 }],
                                 backgroundColor: pressed ? COLORS.primaryTint : COLORS.background
                             })}
-                            // onPress={() => navigation.navigate("Chat", { myId: message?.myId, otherSideId: message?.otherSideId })}
+                            onPress={() => navigation.navigate("Chat", { conversationIdFromMessages: message?.conversationId })}
                         >
                             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                                 <Image 

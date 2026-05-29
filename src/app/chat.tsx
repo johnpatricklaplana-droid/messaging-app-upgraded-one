@@ -1,4 +1,5 @@
 import { COLORS } from "@/constants/themeMyVersion";
+import { useUser } from "@/context/UserContext";
 import { supabase } from "@/lib/supabase";
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { ArrowLeft, MoreVertical, Phone, Plus, SendHorizontalIcon, Video } from "lucide-react-native";
@@ -18,6 +19,10 @@ export async function getDirectConversationId(myId: string, otherSideId: string)
 }
 
 export default function Chat() {
+
+    const user = useUser();
+
+    const myId = user.user?.id;
 
     const keyboardHeight = new Animated.Value(0);
 
@@ -47,7 +52,7 @@ export default function Chat() {
 
     const navigation = useNavigation();
     const route = useRoute();
-    const { myId, otherSideId } = route.params as { myId: string; otherSideId: string; };
+    const { conversationIdFromMessages } = route.params as { conversationIdFromMessages: string; };
 
     interface Message {
         sentAt: string;
@@ -72,9 +77,7 @@ export default function Chat() {
     useEffect(() => {
         const getMessagesIfExist = async () => {
 
-            const data = await getDirectConversationId(myId, otherSideId);
-
-            setConversationId(data?.[0]?.id || null);
+            setConversationId(conversationIdFromMessages);
 
         };
 
@@ -114,17 +117,17 @@ export default function Chat() {
 
     }
 
-    const getKaChatInfo = async () => {
-        const { data, error } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', otherSideId);
+    // const getKaChatInfo = async () => {
+    //     const { data, error } = await supabase
+    //         .from('profiles')
+    //         .select('*')
+    //         .eq('id', otherSideId);
 
-        setKaChatProfile({
-            name: data?.[0].full_name,
-            avatarUrl: data?.[0].avatar_url
-        });
-    }
+    //     setKaChatProfile({
+    //         name: data?.[0].full_name,
+    //         avatarUrl: data?.[0].avatar_url
+    //     });
+    // }
 
     useEffect(() => {
         if(!conversationId) return;
@@ -154,7 +157,7 @@ export default function Chat() {
         ).subscribe();
 
         getMessages();
-        getKaChatInfo();
+        // getKaChatInfo();
 
         return () => { supabase.removeChannel(channel) };
 
@@ -176,12 +179,12 @@ export default function Chat() {
         Keyboard.dismiss();
     };
 
-    const createConversation = async () => {
-        const { data, error } = await supabase.rpc('create_direct_conversation', {
-            p_participant_1: myId,
-            p_participant_2: otherSideId,
-        });
-    };
+    // const createConversation = async () => {
+    //     const { data, error } = await supabase.rpc('create_direct_conversation', {
+    //         p_participant_1: myId,
+    //         p_participant_2: otherSideId,
+    //     });
+    // };
 
     return (
         <SafeAreaView style={{ backgroundColor: COLORS.background, flex: 1 }}>
