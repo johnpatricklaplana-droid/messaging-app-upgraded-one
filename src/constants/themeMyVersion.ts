@@ -11,6 +11,7 @@ export const COLORS = {
 
     inputs: "#FFFFFF0F",
     lightBlue: "#378add",
+    lightBlueLower: "#052646",
     nathan: "#639922",
     natanLower: "#043211",
     family: "#ef9f27",
@@ -28,7 +29,7 @@ export const COLORS = {
     online: "#1d9e75",
     unread: "#e24b4a",
     missedCall: "#e24b4a",
-    missedCallLower: '#3f0303',
+    missedCallLower: '#602f2f',
 
     // Settings tint backgrounds
     settingsTint: {

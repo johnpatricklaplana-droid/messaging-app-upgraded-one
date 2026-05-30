@@ -81,8 +81,6 @@ export default function Messages() {
                                 <Image 
                                     style={{ borderRadius: 50, width: 50, height: 50 }} 
                                     source={{ uri: decodeURIComponent(message.conversationAvatar) }} 
-                                    onError={(e) => console.error(e)}
-                                    onLoad={() => console.log("GOT IT")}
                                 />
                                 <View>
                                     <Text style={{ color: COLORS.textPrimary, fontSize: 18, fontWeight: 600, }}>{message?.conversationName}</Text>
