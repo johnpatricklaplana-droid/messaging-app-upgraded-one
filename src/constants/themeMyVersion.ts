@@ -31,6 +31,9 @@ export const COLORS = {
     missedCall: "#e24b4a",
     missedCallLower: '#602f2f',
 
+    delete: "#dc3545",
+    pressedDelete: "#c82333",
+
     // Settings tint backgrounds
     settingsTint: {
         privacy: "rgba(124,106,240,0.15)",

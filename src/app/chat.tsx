@@ -2,21 +2,12 @@ import { COLORS } from "@/constants/themeMyVersion";
 import { useUser } from "@/context/UserContext";
 import { supabase } from "@/lib/supabase";
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { ArrowLeft, Copy, Edit, Forward, MoreVertical, Phone, Plus, SendHorizontalIcon, Trash2, Video } from "lucide-react-native";
+import { ArrowLeft, Copy, Edit, Forward, Mic, MoreVertical, Phone, Plus, SendHorizontalIcon, Smile, Trash2, Video } from "lucide-react-native";
 import { ReactNode, useEffect, useRef, useState } from "react";
 import { Animated, Image, Keyboard, KeyboardEvent, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { emojis } from "./constants/emojis";
 import { formatMessageTime } from "./helper.tsx/formatDate";
-
-// export async function getDirectConversationId(myId: string, otherSideId: string) {
-//     const { data, error } = await supabase
-//         .from('direct_conversation')
-//         .select('id')
-//         .or(`and(participant_1.eq.${myId.trim()},participant_2.eq.${otherSideId.trim()}),and(participant_1.eq.${otherSideId.trim()},participant_2.eq.${myId.trim()})`);
-
-//     return data;
-
-// }
 
 export default function Chat() {
 
@@ -25,6 +16,7 @@ export default function Chat() {
     const myId = user.user?.id;
 
     const keyboardHeight = useRef(new Animated.Value(0)).current;
+    const optionAnimation = useRef(new Animated.Value(400)).current;
 
     // KEYBOARD ANIMATION
     useEffect(() => {
@@ -73,8 +65,19 @@ export default function Chat() {
     const [textMessage, setTextMessage] = useState("");
     const [kaChatProfile, setKaChatProfile] = useState<KaChat | null>(null);
     const [optionsOpen, SetOptionsOpen] = useState(false);
+    const [messageToDelete, setMessageToDelete] = useState<string>('');
+    const [longPressedMessageId, setLongPressedMessageId] = useState<any>(null);
 
     const ScrollViewRef = useRef<ScrollView>(null);
+
+    useEffect(() => {
+        Animated.timing(optionAnimation, {
+            toValue: optionsOpen ? 0 : 400,
+            duration: 200,
+            useNativeDriver: true
+        }).start();
+    }, [optionsOpen]);
+
 
     useEffect(() => {
         if(!conversationIdFromMessages) return;
@@ -193,14 +196,19 @@ export default function Chat() {
         Keyboard.dismiss();
     };
 
-    const deleteMessage = async (message_id: string) => {
+    const deleteMessage = async () => {
         const { data, error } = await supabase
             .from('messages')
             .delete()
-            .eq('id', message_id);
+            .eq('id', messageToDelete);
 
-        console.log(data);
-        console.error(error);
+        if(!error) {
+            const newMessageStateWhereDeletedMessageIsGone = messages.filter(mess => mess.messageId !== messageToDelete);
+
+            setMessages(newMessageStateWhereDeletedMessageIsGone);
+            setMessageToDelete('');
+            setLongPressedMessageId(null);
+        }
     };
 
     // const createConversation = async () => {
@@ -211,19 +219,26 @@ export default function Chat() {
     // };
 
     interface OptionsWhenLongPressTheMessage {
-        id: number;
+        id: string;
         icon: ReactNode;
         label: string;
         metadata: string;
     };
 
     const optionsWhenLongPressTheMessage: OptionsWhenLongPressTheMessage[] = [
-        { id: 1, icon: <View style={{ padding: 16, backgroundColor: COLORS.lightBlueLower, borderRadius: 16 }} ><Copy color={COLORS.lightBlue}></Copy></View>, label: 'Copy', metadata: 'Copy text to clipboard' },
-        { id: 2, icon: <View style={{ padding: 16, backgroundColor: COLORS.natanLower, borderRadius: 16 }} ><Forward color={COLORS.nathan}></Forward></View>, label: 'Forward', metadata: 'Send to another chat' },
-        { id: 3, icon: <View style={{ padding: 16, backgroundColor: COLORS.primaryTint, borderRadius: 16 }} ><Edit color={COLORS.primary}></Edit></View>, label: 'Edit', metadata: 'Modify sent messsage' },
-        { id: 4, icon: <View style={{ padding: 16, backgroundColor: COLORS.missedCallLower, borderRadius: 16 }} ><Trash2 color={COLORS.missedCall}></Trash2></View>, label: 'Delete', metadata: 'Healing for everyone' },
+        { id: '1', icon: <View style={{ padding: 16, backgroundColor: COLORS.lightBlueLower, borderRadius: 16 }} ><Copy color={COLORS.lightBlue}></Copy></View>, label: 'Copy', metadata: 'Copy text to clipboard' },
+        { id: '2', icon: <View style={{ padding: 16, backgroundColor: COLORS.natanLower, borderRadius: 16 }} ><Forward color={COLORS.nathan}></Forward></View>, label: 'Forward', metadata: 'Send to another chat' },
+        { id: '3', icon: <View style={{ padding: 16, backgroundColor: COLORS.primaryTint, borderRadius: 16 }} ><Edit color={COLORS.primary}></Edit></View>, label: 'Edit', metadata: 'Modify sent messsage' },
+        { id: 'delete', icon: <View style={{ padding: 16, backgroundColor: COLORS.missedCallLower, borderRadius: 16 }} ><Trash2 color={COLORS.delete}></Trash2></View>, label: 'Delete', metadata: 'Healing for everyone' },
         
     ];
+
+    const messageIdTemporaryStorageReadyForOperations = (messageId: string) => {
+        SetOptionsOpen(true);
+        setLongPressedMessageId(messageId);
+    }
+
+    const emoji = emojis;
 
     return (
         <SafeAreaView style={{ backgroundColor: COLORS.background, flex: 1 }}>
@@ -295,7 +310,8 @@ export default function Chat() {
                                     >
                                         <View>
                                             <Pressable 
-                                                onLongPress={() => SetOptionsOpen(true)}
+                                                onLongPress={() => messageIdTemporaryStorageReadyForOperations(mes.messageId)}
+                                                delayLongPress={200}
                                                 style={({ pressed }) => ({
                                                 borderBottomRightRadius: 5, 
                                                 padding: 16, borderRadius: 16, 
@@ -348,10 +364,10 @@ export default function Chat() {
                                 onChangeText={setTextMessage}
                                 value={textMessage}
                             ></TextInput>
-                            {/* <View style={{ flexDirection: 'row', position: 'absolute', right: 8 }}>
+                            <View style={{ flexDirection: 'row', position: 'absolute', right: 8 }}>
                                 <Smile color={COLORS.textMuted}></Smile>
                                 <Mic color={COLORS.textMuted}></Mic>
-                            </View> */}
+                            </View>
                         </View>
                         <Pressable 
                             style={({ pressed }) => ({
@@ -364,7 +380,7 @@ export default function Chat() {
                             <SendHorizontalIcon color={COLORS.textPrimary}></SendHorizontalIcon>
                         </Pressable>
                     </View>
-                    <View
+                    <Animated.View
                         style={{
                             position: 'absolute',
                             bottom: 0,
@@ -372,18 +388,24 @@ export default function Chat() {
                             backgroundColor: COLORS.phoneBody,
                             zIndex: 10,
                             width: '100%',
-                            transform: optionsOpen ? [{ translateY: 0 }] : [{ translateY: '100%' }],
+                            transform: [{ translateY: optionAnimation }],
                             pointerEvents: optionsOpen ? 'auto' : 'none'
                         }}
                     >
                         {optionsWhenLongPressTheMessage.map(options => 
-                                <View 
+                                <Pressable 
                                     style={{ 
                                         flexDirection: 'row', 
                                         alignItems: 'center', 
                                         gap: 8,
                                         paddingHorizontal: 16,
                                         paddingVertical: 8
+                                    }}
+                                    onPress={() => {
+                                        if(options.id === 'delete') {
+                                            setMessageToDelete(longPressedMessageId)
+                                            SetOptionsOpen(false);
+                                        }
                                     }}
                                     key={options.id}
                                 >
@@ -392,8 +414,60 @@ export default function Chat() {
                                         <Text style={{ color: COLORS.textPrimary, fontWeight: 700, fontSize: 16 }}>{options.label}</Text>
                                         <Text style={{ color: COLORS.textSecondary }}>{options.metadata}</Text>
                                     </View>
-                                </View>
+                                </Pressable>
                         )}
+                    </Animated.View>
+                    <View style={{ 
+                            position: 'absolute', 
+                            left: '50%', 
+                            top: '50%',
+                            backgroundColor: COLORS.phoneBody,
+                            transform: [{ translateX: '-50%' }, {translateY: '-50%'}],
+                            padding: 22,
+                            borderRadius: 16,
+                            alignItems: 'center',
+                            width: '80%',
+                            opacity: messageToDelete === '' ? 0 : 1,
+                            pointerEvents: messageToDelete === '' ? 'none' : 'auto'
+                        }}
+                    >
+                        <Text style={{ color: COLORS.textPrimary, fontSize: 22 }}>Delete message?</Text>
+                        <Text style={{ fontSize: 12, color: COLORS.textSecondary }}>This will be removed for everyone.</Text>
+                        <Pressable 
+                            style={({ pressed }) => ({
+                                borderRadius: 16,
+                                marginBottom: 8,
+                                marginTop: 16,
+                                backgroundColor: pressed ? COLORS.pressedDelete : COLORS.delete,
+                                width: '100%',
+                                paddingVertical: 16,
+                            })}
+                        >
+                            <Text style={{ 
+                                textAlign: 'center', 
+                                color: COLORS.textPrimary, 
+                                fontWeight: 700 
+                                }}
+                                onPress={deleteMessage}
+                            >Delete</Text>
+                        </Pressable>
+                        <Pressable 
+                            style={{ 
+                                borderRadius: 16, 
+                                backgroundColor: COLORS.inputs, 
+                                width: '100%', 
+                                paddingVertical: 16 
+                                }}
+                            onPress={() => setMessageToDelete('')}
+                        >
+                                <Text style={{ 
+                                        textAlign: 'center', 
+                                        color: COLORS.textPrimary, 
+                                        fontWeight: 700 
+                                    }}
+                                >Cancel
+                                </Text>
+                            </Pressable>
                     </View>
                     <Pressable onPress={() => SetOptionsOpen(false)} style={{ width: '100%', height: '100%', backgroundColor: '#000000', opacity: optionsOpen ? 0.5 : 0, position: 'absolute', pointerEvents: optionsOpen ? 'auto' : 'none' }}>
 
