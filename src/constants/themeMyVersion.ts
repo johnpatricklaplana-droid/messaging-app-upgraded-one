@@ -32,7 +32,7 @@ export const COLORS = {
     missedCallLower: '#602f2f',
 
     delete: "#dc3545",
-    pressedDelete: "#c82333",
+    pressedDelete: "#b82332",
 
     // Settings tint backgrounds
     settingsTint: {

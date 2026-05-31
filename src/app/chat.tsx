@@ -2,11 +2,25 @@ import { COLORS } from "@/constants/themeMyVersion";
 import { useUser } from "@/context/UserContext";
 import { supabase } from "@/lib/supabase";
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { ArrowLeft, Copy, Edit, Forward, Mic, MoreVertical, Phone, Plus, SendHorizontalIcon, Smile, Trash2, Video } from "lucide-react-native";
+import {
+    ArrowLeft,
+    CheckCircleIcon,
+    Copy,
+    Edit,
+    Forward,
+    Mic,
+    MoreVertical,
+    Phone,
+    Plus,
+    SendHorizontalIcon,
+    Smile,
+    Trash2,
+    Video,
+    X
+} from "lucide-react-native";
 import { ReactNode, useEffect, useRef, useState } from "react";
 import { Animated, Image, Keyboard, KeyboardEvent, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { emojis } from "./constants/emojis";
 import { formatMessageTime } from "./helper.tsx/formatDate";
 
 export default function Chat() {
@@ -67,6 +81,12 @@ export default function Chat() {
     const [optionsOpen, SetOptionsOpen] = useState(false);
     const [messageToDelete, setMessageToDelete] = useState<string>('');
     const [longPressedMessageId, setLongPressedMessageId] = useState<any>(null);
+    const [editMessageMode, setEditMessageMode] = useState(false);
+    const [messageToEdit, setMessageToEdit] = useState<Message | null>();
+
+    const input = useRef<TextInput>(null);
+
+    const messagesRef = useRef<Message[]>([]);
 
     const ScrollViewRef = useRef<ScrollView>(null);
 
@@ -77,6 +97,10 @@ export default function Chat() {
             useNativeDriver: true
         }).start();
     }, [optionsOpen]);
+
+    useEffect(() => {
+        messagesRef.current = messages;
+    }, [messages]);
 
 
     useEffect(() => {
@@ -151,29 +175,48 @@ export default function Chat() {
         const channel = supabase
             .channel(`chat${conversationId}`)
             .on('postgres_changes', {
-                event: 'INSERT',
+                event: '*',
                 schema: 'public',
                 table: 'messages',
                 filter: `conversation_id=eq.${conversationId}`
             },
             (payload) => {
-                let me = false;
-                if(payload.new.sender_id === myId) {
-                    me = true;
-                } 
-            
-                setMessages(prev => [...prev, {
-                    messageId: payload.new.id,
-                    sender_id: payload.new.sender_id,
-                    sentAt: formatMessageTime(payload.new.created_at),
-                    text_message: payload.new.text_message,
-                    me: me
-                }]);
+                if(payload.eventType === "INSERT") {
+                    let me = false;
+                    if (payload.new.sender_id === myId) {
+                        me = true;
+                    }
+
+                    setMessages(prev => [...prev, {
+                        messageId: payload.new.id,
+                        sender_id: payload.new.sender_id,
+                        sentAt: formatMessageTime(payload.new.created_at),
+                        text_message: payload.new.text_message,
+                        me: me
+                    }]);
+                } else if(payload.eventType === "UPDATE") {
+                    const messageId = payload.new.id;
+                    const newTextMessage = payload.new.text_message;
+
+                    const newMessages = messagesRef.current.map(mess => {
+                        if (mess.messageId === messageId) {
+                            return {
+                                ...mess,
+                                text_message: newTextMessage
+                            }
+                        } else {
+                            return mess;
+                        }
+                    }) ?? [];
+
+                    setMessages(newMessages);
+
+
+                }
             }
         ).subscribe();
 
         getMessages();
-        // getKaChatInfo();
 
         return () => { supabase.removeChannel(channel) };
 
@@ -211,12 +254,50 @@ export default function Chat() {
         }
     };
 
-    // const createConversation = async () => {
-    //     const { data, error } = await supabase.rpc('create_direct_conversation', {
-    //         p_participant_1: myId,
-    //         p_participant_2: otherSideId,
-    //     });
-    // };
+    const setToEditMessageMode = () => {
+        console.log("INPUT");
+
+        console.log(messageToEdit);
+        const mess = messageToEdit?.text_message;
+        SetOptionsOpen(false);
+
+        if(!mess) return;
+    
+        setEditMessageMode(true);
+
+        input.current?.blur();
+        setTimeout(() => {
+            input.current?.focus();
+        }, 100);
+
+    };
+
+    const setNewMessageEditingMode = (text: string) => {
+        setMessageToEdit(prev => ({...prev!, text_message: text}));
+    };
+
+    const setEditModeToFalse = () => {
+        setEditMessageMode(false);
+        setMessageToEdit(null);
+    };
+
+    const editMessage = async () => {
+
+        const mess = messageToEdit;
+
+        const { data, error } = await supabase
+            .from('messages')
+            .update({ text_message: mess?.text_message })
+            .eq('id', mess?.messageId);
+
+        console.log(data);
+        console.error(error);
+
+        if(!error) {
+            setEditModeToFalse();
+        }
+        
+    };
 
     interface OptionsWhenLongPressTheMessage {
         id: string;
@@ -228,17 +309,16 @@ export default function Chat() {
     const optionsWhenLongPressTheMessage: OptionsWhenLongPressTheMessage[] = [
         { id: '1', icon: <View style={{ padding: 16, backgroundColor: COLORS.lightBlueLower, borderRadius: 16 }} ><Copy color={COLORS.lightBlue}></Copy></View>, label: 'Copy', metadata: 'Copy text to clipboard' },
         { id: '2', icon: <View style={{ padding: 16, backgroundColor: COLORS.natanLower, borderRadius: 16 }} ><Forward color={COLORS.nathan}></Forward></View>, label: 'Forward', metadata: 'Send to another chat' },
-        { id: '3', icon: <View style={{ padding: 16, backgroundColor: COLORS.primaryTint, borderRadius: 16 }} ><Edit color={COLORS.primary}></Edit></View>, label: 'Edit', metadata: 'Modify sent messsage' },
+        { id: 'edit', icon: <View style={{ padding: 16, backgroundColor: COLORS.primaryTint, borderRadius: 16 }} ><Edit color={COLORS.primary}></Edit></View>, label: 'Edit', metadata: 'Modify sent messsage' },
         { id: 'delete', icon: <View style={{ padding: 16, backgroundColor: COLORS.missedCallLower, borderRadius: 16 }} ><Trash2 color={COLORS.delete}></Trash2></View>, label: 'Delete', metadata: 'Healing for everyone' },
         
     ];
 
-    const messageIdTemporaryStorageReadyForOperations = (messageId: string) => {
+    const messageIdTemporaryStorageReadyForOperations = (message: Message) => {
         SetOptionsOpen(true);
-        setLongPressedMessageId(messageId);
+        setLongPressedMessageId(message.messageId);
+        setMessageToEdit(message);
     }
-
-    const emoji = emojis;
 
     return (
         <SafeAreaView style={{ backgroundColor: COLORS.background, flex: 1 }}>
@@ -306,11 +386,11 @@ export default function Chat() {
                                 return (
                                     <View
                                         style={{ marginTop: 8, marginBottom: 8, gap: 8, flexDirection: 'row', alignItems: 'flex-end', maxWidth: '80%', alignSelf: 'flex-end' }}
-                                        key={i}
+                                        key={mes.messageId}
                                     >
                                         <View>
                                             <Pressable 
-                                                onLongPress={() => messageIdTemporaryStorageReadyForOperations(mes.messageId)}
+                                                onLongPress={() => messageIdTemporaryStorageReadyForOperations(mes)}
                                                 delayLongPress={200}
                                                 style={({ pressed }) => ({
                                                 borderBottomRightRadius: 5, 
@@ -328,7 +408,7 @@ export default function Chat() {
                                 return (
                                     <View
                                         style={{ marginTop: 8, marginBottom: 8, gap: 8, flexDirection: 'row', alignItems: 'flex-end', maxWidth: '80%' }}
-                                        key={i}
+                                        key={mes.messageId}
                                     >
                                         <Image
                                             source={{ uri: kaChatProfile?.avatarUrl }}
@@ -353,32 +433,68 @@ export default function Chat() {
                             }
                         })}
                     </ScrollView>
-                    <View style={{ gap: 8, flexDirection: 'row', padding: 16, alignItems: "center", justifyContent: 'space-between', borderTopColor: COLORS.divider, borderTopWidth: 1 }}>
-                        <Plus color={COLORS.textSecondary}></Plus>
-                        <View style={{ flex: 1, position: 'relative', flexDirection: "row", alignItems: 'center', gap: 8, backgroundColor: COLORS.inputs, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 16 }}>
-                            <TextInput 
-                                key={"messaging-input"}
-                                placeholderTextColor={COLORS.textMuted} 
-                                style={{ color: COLORS.textPrimary, width: '100%' }} 
-                                placeholder="write some message"
-                                onChangeText={setTextMessage}
-                                value={textMessage}
-                            ></TextInput>
-                            <View style={{ flexDirection: 'row', position: 'absolute', right: 8 }}>
-                                <Smile color={COLORS.textMuted}></Smile>
-                                <Mic color={COLORS.textMuted}></Mic>
+                    <View>
+                        {editMessageMode && <View style={{ paddingHorizontal: 16, paddingVertical: 8, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <Text
+                                style={{ color: COLORS.textPrimary, fontWeight: 700 }}
+                            >
+                                Edit message
+                            </Text>
+                            <Pressable
+                                onPress={setEditModeToFalse}
+                                style={{
+                                    backgroundColor: COLORS.inputs,
+                                    borderRadius: 50,
+                                    padding: 8
+                                }}
+                            >
+                                <X color={COLORS.textPrimary}></X>
+                            </Pressable>
+                        </View>}
+                        <View style={{ gap: 8, flexDirection: 'row', padding: 16, alignItems: "center", justifyContent: 'space-between', borderTopColor: COLORS.divider, borderTopWidth: 1 }}>
+                            <Plus color={COLORS.textSecondary}></Plus>
+                            <View style={{ flex: 1, position: 'relative', flexDirection: "row", alignItems: 'center', gap: 8, backgroundColor: COLORS.inputs, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 16 }}>
+                                <TextInput
+                                    ref={input}
+                                    placeholderTextColor={COLORS.textMuted}
+                                    style={{ color: COLORS.textPrimary, width: '100%' }}
+                                    placeholder="write some message"
+                                    onChangeText={editMessageMode ? setNewMessageEditingMode : setTextMessage}
+                                    value={editMessageMode ? messageToEdit?.text_message : textMessage}
+                                >
+    
+                                </TextInput>
+                                <View style={{ flexDirection: 'row', position: 'absolute', right: 8 }}>
+                                    <Pressable>
+                                        <Smile color={COLORS.textMuted}></Smile>
+                                    </Pressable>
+                                    <Mic color={COLORS.textMuted}></Mic>
+                                </View>
                             </View>
+                            {editMessageMode === false &&<Pressable
+                                style={({ pressed }) => ({
+                                    backgroundColor: textMessage === ""
+                                        ? "#ccc" // disabled color
+                                        : pressed
+                                            ? COLORS.primaryTint
+                                            : COLORS.primary,
+                                    padding: 8,
+                                    borderRadius: 50,
+                                    alignItems: 'center',
+                                    justifyContent: 'center'
+                                })}
+                                onPress={sendMessage}
+                                disabled={textMessage === "" ? true : false}
+                            >
+                                <SendHorizontalIcon color={COLORS.textPrimary}></SendHorizontalIcon>
+                            </Pressable>}
+                            {editMessageMode === true &&
+                                <Pressable
+                                    onPress={editMessage}
+                                >
+                                    <CheckCircleIcon color={messageToEdit?.text_message === "" ? COLORS.textPrimary : COLORS.primary}></CheckCircleIcon>
+                                </Pressable>}
                         </View>
-                        <Pressable 
-                            style={({ pressed }) => ({
-                                backgroundColor: pressed ? COLORS.primaryTint : COLORS.primary,
-                                padding: 8,
-                                borderRadius: 50,
-                            })}
-                            onPress={sendMessage}
-                        >
-                            <SendHorizontalIcon color={COLORS.textPrimary}></SendHorizontalIcon>
-                        </Pressable>
                     </View>
                     <Animated.View
                         style={{
@@ -394,17 +510,20 @@ export default function Chat() {
                     >
                         {optionsWhenLongPressTheMessage.map(options => 
                                 <Pressable 
-                                    style={{ 
+                                    style={({ pressed }) => ({
                                         flexDirection: 'row', 
                                         alignItems: 'center', 
                                         gap: 8,
                                         paddingHorizontal: 16,
-                                        paddingVertical: 8
-                                    }}
+                                        paddingVertical: 8,
+                                        backgroundColor: pressed ? COLORS.inputs : COLORS.phoneBody
+                                    })}
                                     onPress={() => {
                                         if(options.id === 'delete') {
                                             setMessageToDelete(longPressedMessageId)
                                             SetOptionsOpen(false);
+                                        } else if(options.id === 'edit') {
+                                            setToEditMessageMode();
                                         }
                                     }}
                                     key={options.id}
