@@ -5,6 +5,7 @@ import { Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from "react-native-safe-area-context";
 import Svg, { Path } from 'react-native-svg';
 import { supabase } from '../../lib/supabase';
+import { registerNotification } from '../notification';
 
 async function handleGoogleSignIn() { 
 
@@ -37,6 +38,7 @@ async function handleGoogleSignIn() {
             const { error } = await supabase.auth.setSession({ access_token, refresh_token });
             if (error) console.log(error);
         }
+        registerNotification();
     }
 }
 

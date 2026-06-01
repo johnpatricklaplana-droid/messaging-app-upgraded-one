@@ -381,7 +381,7 @@ export default function Chat() {
                             <Text style={{ color: COLORS.primaryLight }}>Hey Daddy</Text>
                         </Pressable>
                     </View>
-                    {messages.map((mes, i) => {
+                    {messages.map((mes) => {
                             if (mes.me) {
                                 return (
                                     <View

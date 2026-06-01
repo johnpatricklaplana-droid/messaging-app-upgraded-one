@@ -22,6 +22,7 @@ export default {
       "animateByDefault": false,
       "predictiveBackGestureEnabled": false,
       "package": "com.anonymous.messagingapplastone",
+      "googleServicesFile": "./google-services.json",
       "softwareKeyboardLayoutMode": "pan"
     },
     web: {

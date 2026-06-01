@@ -84,7 +84,7 @@ export default function Messages() {
                                 />
                                 <View>
                                     <Text style={{ color: COLORS.textPrimary, fontSize: 18, fontWeight: 600, }}>{message?.conversationName}</Text>
-                                    <Text style={{ color: COLORS.textMuted }}>{message?.senderName}: {message?.lastMessage}</Text>
+                                    <Text numberOfLines={1} style={{ color: COLORS.textMuted, maxWidth: '80%' }}>{message?.senderName}: {message?.lastMessage}</Text>
                                 </View>
                             </View>
                             <Text numberOfLines={1} style={{ color: COLORS.textMuted, textAlign: 'right', width: 56 }}>{message?.lastMessageTime}</Text>

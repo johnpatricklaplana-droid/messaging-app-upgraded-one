@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
+import * as Notifications from 'expo-notifications';
 import { useEffect, useState } from 'react';
 import 'react-native-gesture-handler';
 import LoginScreen from './src/app/auth/loginScreen';
@@ -22,6 +23,11 @@ async function name() {
     console.log("KEYS: +++++++++++++");
     console.log(keys);
 }
+
+Notifications.setNotificationChannelAsync('messages', {
+    name: 'messages',
+    importance: Notifications.AndroidImportance.MAX,
+});
 
 name();
 
