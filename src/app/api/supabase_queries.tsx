@@ -66,6 +66,7 @@ export interface ConversationList {
     lastMessage: string;
     lastMessageTime: string;
     senderName: string;
+    isRead: boolean
 };
 
 export async function getDirectConversation(myId: string) {
@@ -74,6 +75,9 @@ export async function getDirectConversation(myId: string) {
 
     const { data, error } = await supabase.rpc('get_direct_conversations_with_last_message');
 
+    console.log("let is see some");
+    console.log(data);
+
     data.forEach((da: any) => {
         directConv.push({
             conversationId: da.conversation_id,
@@ -81,7 +85,8 @@ export async function getDirectConversation(myId: string) {
             conversationName: da.other_user_name,
             lastMessage: da.last_message, 
             lastMessageTime: da.last_message_time,
-            senderName: da.sendername
+            senderName: da.sender_id === myId ? 'you' : da.sendername,
+            isRead: da.is_read
         });
     });
 
@@ -106,7 +111,8 @@ export async function getGroupConversation() {
             conversationName: d.conversation_name,
             lastMessage: d.last_message,
             lastMessageTime: d.last_message_time,
-            senderName: d.sender_name
+            senderName: d.sender_name,
+            isRead: false
         });
     });
    

@@ -90,6 +90,39 @@ export default function Chat() {
 
     const ScrollViewRef = useRef<ScrollView>(null);
 
+    // SEEN THE MESSAGES
+    useEffect(() => {
+        if(!conversationId) return;
+
+        const getUnreadOnes = async () => {
+            const { data, error } = await supabase.rpc('get_unread_messages', {
+                p_conversation_id: conversationId
+            });
+
+            const messageIdsAndMyId = data.map((d: any) => ({
+                message_id: d.message_id,
+                profile_id: myId
+            }));
+
+            console.log("messageIds");
+            console.log(messageIdsAndMyId);
+
+            readMessage(messageIdsAndMyId);
+
+        }
+
+        getUnreadOnes();
+
+    }, [conversationId]);
+
+    const readMessage = async (messageIdsAndMyId: any) => {
+        const { data, error } = await supabase
+            .from('messages_read')
+            .insert(messageIdsAndMyId);
+
+        console.error(error);
+    };  
+
     useEffect(() => {
         Animated.timing(optionAnimation, {
             toValue: optionsOpen ? 0 : 400,
@@ -561,13 +594,13 @@ export default function Chat() {
                                 width: '100%',
                                 paddingVertical: 16,
                             })}
+                            onPress={deleteMessage}
                         >
                             <Text style={{ 
                                 textAlign: 'center', 
                                 color: COLORS.textPrimary, 
                                 fontWeight: 700 
                                 }}
-                                onPress={deleteMessage}
                             >Delete</Text>
                         </Pressable>
                         <Pressable 
