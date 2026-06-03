@@ -94,20 +94,49 @@ export default function Chat() {
     useEffect(() => {
         if(!conversationId) return;
 
+        const getConversation = async () => {
+            const { data, error } = await supabase  
+                .from('conversations')
+                .select('*')
+                .eq('id', conversationId);
+
+            console.log("ljaflkjslfkas");
+            console.log(data);
+            console.log(error);
+
+            return data?.[0].is_group;
+        }
+
         const getUnreadOnes = async () => {
-            const { data, error } = await supabase.rpc('get_unread_messages', {
-                p_conversation_id: conversationId
-            });
 
-            const messageIdsAndMyId = data.map((d: any) => ({
-                message_id: d.message_id,
-                profile_id: myId
-            }));
+            const isGroup = await getConversation();
 
-            console.log("WHY IS THAT");
-            console.log(messageIdsAndMyId);
+            if(!isGroup) {
+                const { data, error } = await supabase.rpc('get_unread_messages', {
+                    p_conversation_id: conversationId
+                });
 
-            readMessage(messageIdsAndMyId);
+                const messageIdsAndMyId = data.map((d: any) => ({
+                    message_id: d.message_id,
+                    profile_id: myId
+                }));
+
+                readMessage(messageIdsAndMyId);
+            } else {
+                const { data, error } = await supabase.rpc('get_unread_messages_group_chat_version', {
+                    p_conversation_id: conversationId
+                });
+
+                console.log("AS WE GO I SEE THE LIGHT YOU WERE DANCING FEEL SO RIGHT");
+                console.log(data);
+                console.error(error);
+                const messageIdsAndMyId = data.map((d: any) => ({
+                    message_id: d.message_id,
+                    profile_id: myId
+                }));
+
+                readMessage(messageIdsAndMyId);
+            }
 
         }
 
@@ -116,10 +145,13 @@ export default function Chat() {
     }, [conversationId]);
 
     const readMessage = async (messageIdsAndMyId: any) => {
+        if(!messageIdsAndMyId) return;
         const { data, error } = await supabase
             .from('messages_read')
             .insert(messageIdsAndMyId);
 
+        console.log("WHY IS THIS HAPPENING");
+        console.log(data);
         console.error(error);
     };  
 

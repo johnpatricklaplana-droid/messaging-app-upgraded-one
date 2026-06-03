@@ -106,13 +106,13 @@ export async function getGroupConversation() {
 
     data?.forEach((d: any) => {
         directConv.push({
-            conversationId: d.conversation_id,
-            conversationAvatar: d.conversation_avatar,
+            conversationId: d.id,
+            conversationAvatar: d.avatar_url,
             conversationName: d.conversation_name,
-            lastMessage: d.last_message,
-            lastMessageTime: d.last_message_time,
-            senderName: d.sender_name,
-            isRead: false
+            lastMessage: d.text_message,
+            lastMessageTime: d.created_at,
+            senderName: d.full_name,
+            isRead: d.is_read
         });
     });
    

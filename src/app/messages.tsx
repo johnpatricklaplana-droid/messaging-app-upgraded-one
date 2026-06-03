@@ -56,7 +56,17 @@ export default function Messages() {
                         getConversations();
                     } 
                 }
-            ).subscribe();
+            )
+            .on('postgres_changes', {
+                event: 'INSERT',
+                schema: 'public',
+                table: 'messages_read',
+                filter: `profile_id=eq.${myId}`
+            },
+            (payload) => {
+                getConversations();
+            })
+            .subscribe();
 
         return () => { supabase.removeChannel(channel); };
     }, [conversationIds]);
@@ -73,6 +83,7 @@ export default function Messages() {
     };
 
     console.log("try to her i love her");
+    console.log(directConversation);
     console.log(conversationIds);
 
     return (

@@ -29,6 +29,14 @@ Notifications.setNotificationChannelAsync('messages', {
     importance: Notifications.AndroidImportance.MAX,
 });
 
+Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+        shouldPlaySound: true,
+        shouldSetBadge: true,
+        shouldShowBanner: true
+    }),
+});
+
 name();
 
 const Tab = createBottomTabNavigator();
