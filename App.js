@@ -104,7 +104,7 @@ export default function TabLayout() {
     return (
         <NavigationContainer>
             <UserProvider>
-                <RootStack.Navigator 
+                <RootStack.Navigator
                     screenOptions={{ headerShown: false }}
                 >
                     {session ? (

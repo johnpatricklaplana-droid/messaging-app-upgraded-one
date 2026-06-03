@@ -104,7 +104,7 @@ export default function Chat() {
                 profile_id: myId
             }));
 
-            console.log("messageIds");
+            console.log("WHY IS THAT");
             console.log(messageIdsAndMyId);
 
             readMessage(messageIdsAndMyId);
@@ -194,9 +194,12 @@ export default function Chat() {
                 p_conversation_id: conversationIdFromMessages
             });
 
+            console.log(data);
+            console.log(error);
+
             setKaChatProfile({
-                name: data?.[0].friend_name,
-                avatarUrl: data?.[0].friend_avatar
+                name: data?.[0].full_name,
+                avatarUrl: data?.[0].avatar_url
             });
         }
     }
@@ -267,6 +270,9 @@ export default function Chat() {
                 conversation_id: conversationId,
                 sender_id: myId
             });
+
+        console.log("HERE");
+        console.log(error);
         
         setTextMessage("");
         Keyboard.dismiss();

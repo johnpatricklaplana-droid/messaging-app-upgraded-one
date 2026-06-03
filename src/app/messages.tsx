@@ -1,5 +1,6 @@
 import { COLORS } from "@/constants/themeMyVersion";
 import { useUser } from "@/context/UserContext";
+import { supabase } from "@/lib/supabase";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { MoreVertical, UserPlus } from 'lucide-react-native';
@@ -15,6 +16,7 @@ export default function Messages() {
     const myId = user.user?.id;
     
     const [directConversation, setDirectConversation] = useState<ConversationList[]>([]);
+    const [conversationIds, setConversationIds] = useState<string[] | []>([]);
 
     type RootStackParamList = {
         Messages: undefined;
@@ -25,6 +27,11 @@ export default function Messages() {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
     useEffect(() => {
+        if (!directConversation) return;
+        setConversationIds(directConversation.map(dc => dc.conversationId));
+    }, [directConversation]);
+
+    useEffect(() => {
 
         if(!myId) return;
 
@@ -32,13 +39,41 @@ export default function Messages() {
 
     }, [myId]);
 
+    useEffect(() => {
+
+        if(!conversationIds) return;
+
+        const channel = supabase
+                .channel(`chat${myId}`)
+                .on('postgres_changes', {
+                    event: '*',
+                    schema: 'public',
+                    table: 'messages',
+                    filter: `conversation_id=in.(${conversationIds.join(',')})`
+                },
+                (payload) => {
+                    if(payload.eventType === "INSERT") {
+                        getConversations();
+                    } 
+                }
+            ).subscribe();
+
+        return () => { supabase.removeChannel(channel); };
+    }, [conversationIds]);
+
     const getConversations = async () => {
         if(!myId) return;
         const converse = await getDirectConversation(myId);
         const groupConverse = await getGroupConversation();
 
-        setDirectConversation([...converse, ...groupConverse]); 
+        setDirectConversation([...converse, ...groupConverse].sort((a, b) => 
+            new Date(b.lastMessageTime).getTime() - new Date(a.lastMessageTime).getTime()
+        )); 
+
     };
+
+    console.log("try to her i love her");
+    console.log(conversationIds);
 
     return (
         <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: COLORS.background }}>
