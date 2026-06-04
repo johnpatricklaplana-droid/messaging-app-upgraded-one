@@ -2,16 +2,17 @@ import { COLORS } from "@/constants/themeMyVersion";
 import { useUser } from "@/context/UserContext";
 import { supabase } from "@/lib/supabase";
 import { useNavigation, useRoute } from '@react-navigation/native';
+import * as ImagePicker from 'expo-image-picker';
 import {
     ArrowLeft,
     CheckCircleIcon,
     Copy,
     Edit,
     Forward,
+    ImageIcon,
     Mic,
     MoreVertical,
     Phone,
-    Plus,
     SendHorizontalIcon,
     Smile,
     Trash2,
@@ -57,6 +58,78 @@ export default function Chat() {
         };
     }, []);
 
+    const pickImages = async () => {
+        const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ['images', 'videos'],
+            allowsMultipleSelection: true,
+            quality: 1,
+            selectionLimit: 20
+        });
+        
+        if(!result.canceled) {
+            const { data, error } = await supabase
+                .from('messages')
+                .insert({
+                    text_message: null,
+                    conversation_id: conversationId,
+                    sender_id: myId,
+                    message_type: 'media'
+                })
+                .select('id')
+                .single();
+
+            console.log('ID');
+            console.log(data);
+            console.error(error);
+ 
+            allMediaFiles(data?.id, result.assets);
+            
+        }
+
+    }
+
+    const allMediaFiles = async (messageId: string, assets: ImagePicker.ImagePickerAsset[]) => {
+        const uploads = await Promise.all(
+            assets.map(async (asset) => {
+                const fileExt = asset.mimeType?.split('/').pop();
+                const fileName = `${messageId}${Date.now()}${Math.random()}.${fileExt}`;
+                const type = asset.mimeType?.split('/')[0];
+
+                const response = await fetch(asset.uri);
+                const file = await response.arrayBuffer();
+
+                const { data, error } = await supabase.storage
+                    .from('media_messages')
+                    .upload(fileName, file, {
+                        contentType: asset.mimeType
+                    });
+                    
+                if(error) throw error;
+
+                const { data: { publicUrl } } = supabase.storage
+                    .from('media_messages')
+                    .getPublicUrl(fileName);
+
+                return {
+                    message_id: messageId,
+                    url: publicUrl,
+                    type: type
+                } 
+
+            })
+        )
+
+        const { data, error } = await supabase
+            .from('message_media')
+            .insert(uploads);
+
+        if (error) throw error;
+
+        return uploads;
+    }
+        
+    
+
     const navigation = useNavigation();
     const route = useRoute();
     const { conversationIdFromMessages } = route.params as { conversationIdFromMessages: string; };
@@ -100,10 +173,6 @@ export default function Chat() {
                 .select('*')
                 .eq('id', conversationId);
 
-            console.log("ljaflkjslfkas");
-            console.log(data);
-            console.log(error);
-
             return data?.[0].is_group;
         }
 
@@ -127,9 +196,6 @@ export default function Chat() {
                     p_conversation_id: conversationId
                 });
 
-                console.log("AS WE GO I SEE THE LIGHT YOU WERE DANCING FEEL SO RIGHT");
-                console.log(data);
-                console.error(error);
                 const messageIdsAndMyId = data.map((d: any) => ({
                     message_id: d.message_id,
                     profile_id: myId
@@ -149,10 +215,6 @@ export default function Chat() {
         const { data, error } = await supabase
             .from('messages_read')
             .insert(messageIdsAndMyId);
-
-        console.log("WHY IS THIS HAPPENING");
-        console.log(data);
-        console.error(error);
     };  
 
     useEffect(() => {
@@ -523,7 +585,16 @@ export default function Chat() {
                             </Pressable>
                         </View>}
                         <View style={{ gap: 8, flexDirection: 'row', padding: 16, alignItems: "center", justifyContent: 'space-between', borderTopColor: COLORS.divider, borderTopWidth: 1 }}>
-                            <Plus color={COLORS.textSecondary}></Plus>
+                            <Pressable 
+                                style={({ pressed }) => ({
+                                    padding: 8,
+                                    borderRadius: 8,
+                                    backgroundColor: pressed ? COLORS.primaryTint  : COLORS.background
+                                })}
+                                onPress={pickImages}
+                            >
+                                <ImageIcon color={COLORS.textSecondary}></ImageIcon>
+                            </Pressable>
                             <View style={{ flex: 1, position: 'relative', flexDirection: "row", alignItems: 'center', gap: 8, backgroundColor: COLORS.inputs, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 16 }}>
                                 <TextInput
                                     ref={input}
