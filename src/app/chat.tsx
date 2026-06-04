@@ -67,68 +67,39 @@ export default function Chat() {
         });
         
         if(!result.canceled) {
-            const { data, error } = await supabase
-                .from('messages')
-                .insert({
-                    text_message: null,
-                    conversation_id: conversationId,
-                    sender_id: myId,
-                    message_type: 'media'
-                })
-                .select('id')
-                .single();
 
-            console.log('ID');
-            console.log(data);
-            console.error(error);
- 
-            allMediaFiles(data?.id, result.assets);
-            
+            const { data: { session } } = await supabase.auth.getSession();
+
+            const files = await Promise.all(
+                result.assets.map(async (asset) => {
+                    const response = await fetch(asset.uri);
+                    const arrayBuffer = await response.arrayBuffer();
+                    const bytes = new Uint8Array(arrayBuffer);
+
+                    let content = '';
+                    for (let i = 0; i < bytes.length; i++) {
+                        content += String.fromCharCode(bytes[i]);
+                    }
+
+                    return {
+                        name: `${myId}${Date.now()}${Math.random()}.${asset.mimeType?.split('/').pop()}`,
+                        type: asset.mimeType,
+                        content: btoa(content),
+                    };
+                })
+            );
+
+            const response = await fetch('https://lbuoshnzslfbdtvbmfrg.supabase.co/functions/v1/upload-media-files', {
+                method: 'POST',
+                body: JSON.stringify({ conversationId: conversationId, files }),
+                headers: {
+                    Authorization: `Bearer ${session?.access_token}`
+                }
+            });
+
         }
 
     }
-
-    const allMediaFiles = async (messageId: string, assets: ImagePicker.ImagePickerAsset[]) => {
-        const uploads = await Promise.all(
-            assets.map(async (asset) => {
-                const fileExt = asset.mimeType?.split('/').pop();
-                const fileName = `${messageId}${Date.now()}${Math.random()}.${fileExt}`;
-                const type = asset.mimeType?.split('/')[0];
-
-                const response = await fetch(asset.uri);
-                const file = await response.arrayBuffer();
-
-                const { data, error } = await supabase.storage
-                    .from('media_messages')
-                    .upload(fileName, file, {
-                        contentType: asset.mimeType
-                    });
-                    
-                if(error) throw error;
-
-                const { data: { publicUrl } } = supabase.storage
-                    .from('media_messages')
-                    .getPublicUrl(fileName);
-
-                return {
-                    message_id: messageId,
-                    url: publicUrl,
-                    type: type
-                } 
-
-            })
-        )
-
-        const { data, error } = await supabase
-            .from('message_media')
-            .insert(uploads);
-
-        if (error) throw error;
-
-        return uploads;
-    }
-        
-    
 
     const navigation = useNavigation();
     const route = useRoute();

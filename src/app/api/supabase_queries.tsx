@@ -75,9 +75,6 @@ export async function getDirectConversation(myId: string) {
 
     const { data, error } = await supabase.rpc('get_direct_conversations_with_last_message');
 
-    console.log("let is see some");
-    console.log(data);
-
     data.forEach((da: any) => {
         directConv.push({
             conversationId: da.conversation_id,
@@ -99,10 +96,6 @@ export async function getGroupConversation() {
     const directConv: ConversationList[] = [];
     
     const { data, error } = await supabase.rpc('get_group_conversations_with_last_message');
-
-        console.log("PWEDE?");
-    console.log(JSON.stringify(data));
-    console.log(error);
 
     data?.forEach((d: any) => {
         directConv.push({

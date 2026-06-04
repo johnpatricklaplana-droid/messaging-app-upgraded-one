@@ -82,10 +82,6 @@ export default function Messages() {
 
     };
 
-    console.log("try to her i love her");
-    console.log(directConversation);
-    console.log(conversationIds);
-
     return (
         <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: COLORS.background }}>
             <ScrollView contentContainerStyle={{ }}>
