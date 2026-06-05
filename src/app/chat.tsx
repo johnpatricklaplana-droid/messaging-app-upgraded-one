@@ -23,10 +23,9 @@ import {
 import { ReactNode, useEffect, useRef, useState } from "react";
 import { Animated, DimensionValue, Image, Keyboard, KeyboardEvent, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { formatMessageTime } from "./helper.tsx/formatDate";
 
 function VideoMessage({ url, width, height }: { url: string, width: DimensionValue, height: DimensionValue }) {
-
-    const [play, setPlay] = useState(false);
 
     const player = useVideoPlayer(url, player => {
         player.loop = true;
@@ -39,7 +38,6 @@ function VideoMessage({ url, width, height }: { url: string, width: DimensionVal
                 height: height,
                 borderRadius: 16,
                 backgroundColor: COLORS.primaryTint,
-                marginBlock: 8
             }}
             player={player}
             fullscreenOptions={{ enable: true }}
@@ -142,7 +140,9 @@ export default function Chat() {
 
     interface MessageMedia {
         url: string,
-        type: string
+        type: string,
+        message_id: string,
+        id: string
     }
 
     const mockMessage: Message[] = [
@@ -162,7 +162,7 @@ export default function Chat() {
             text_message: 'f;djfa', 
             me: true, 
             type: 'media',
-            media: [{ url: 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4', type: 'video' }, { url: 'https://picsum.photos/200/300?random=3', type: 'image' } ]
+            media: [{ message_id: 'fkljafkjs', id: 'fkjaf', url: 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4', type: 'video' }, { message_id: 'fkljafkjs', id: 'fkjaf', url: 'https://picsum.photos/200/300?random=3', type: 'image' } ]
         }, 
         { 
             sentAt:  '2026-05-25T15:49:59.011129+00:00', 
@@ -170,8 +170,8 @@ export default function Chat() {
             sender_id: 'dkfjalkf', 
             text_message: 'f;djfa', 
             me: true, 
-            type: 'text',
-            media: null
+            type: 'media',
+            media: [{ message_id: 'fkljafkjs', id: 'fkjaf', url: 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4', type: 'video' }, { message_id: 'fkljafkjs', id: 'fkjaf', url: 'https://picsum.photos/200/300?random=3', type: 'image' }, { message_id: 'fkljafkjs', id: 'fkjaf', url: 'https://picsum.photos/200/300?random=3', type: 'image' }]
         },
         {
             sentAt: '2026-05-25T15:49:59.011129+00:00',
@@ -180,7 +180,7 @@ export default function Chat() {
             text_message: 'f;djfa',
             me: true,
             type: 'media',
-            media: [{ url: 'https://www.w3schools.com/html/mov_bbb.mp4', type: 'video' }]
+            media: [{ message_id: 'fkljafkjs', id: 'fkjaf', url: 'https://www.w3schools.com/html/mov_bbb.mp4', type: 'video' }]
         }, 
         { 
             sentAt:  '2026-05-25T15:49:59.011129+00:00', 
@@ -188,8 +188,8 @@ export default function Chat() {
             sender_id: 'dkfjalkf', 
             text_message: 'f;djfa', 
             me: true, 
-            type: 'text',
-            media: null
+            type: 'media',
+            media: [{ message_id: 'fkljafkjs', id: 'fkjaf', url: 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4', type: 'video' }, { message_id: 'fkljafkjs', id: 'fkjaf', url: 'https://picsum.photos/200/300?random=3', type: 'image' }, { message_id: 'fkljafkjs', id: 'fkjaf', url: 'https://picsum.photos/200/300?random=3', type: 'image' }, { message_id: 'fkljafkjs', id: 'fkjaf', url: 'https://picsum.photos/200/300?random=3', type: 'image' }]
         },
     ]
 
@@ -294,35 +294,37 @@ export default function Chat() {
         
     }, [conversationIdFromMessages]);
 
-    // const getMessages = async () => {
-    //     const { data, error } = await supabase
-    //         .from('messages')
-    //         .select('*')
-    //         .eq('conversation_id', conversationId)
-    //         .order('created_at', { ascending: false });
+    const getMessages = async () => {
+        const { data, error } = await supabase
+            .from('messages')
+            .select('*, message_media(*)')
+            .eq('conversation_id', conversationId)
+            .order('created_at', { ascending: false });
 
-    //     const sortedData = data?.reverse();
+
+        const sortedData = data?.reverse();
         
-    //     setMessages((sortedData?.map(mes => {
+        setMessages((sortedData?.map(mes => {
 
-    //         let me = false;
+            let me = false;
 
-    //         if(mes.sender_id === myId) {
-    //             me = true;
-    //         }
+            if(mes.sender_id === myId) {
+                me = true;
+            }
 
-    //         return {
-    //             messageId: mes.id,
-    //             sender_id: mes.sender_id,
-    //             sentAt: formatMessageTime(mes.created_at),
-    //             text_message: mes.text_message,
-    //             me: me,
-    //             type: mes.type
-    //         } 
+            return {
+                messageId: mes.id,
+                sender_id: mes.sender_id,
+                sentAt: formatMessageTime(mes.created_at),
+                text_message: mes.text_message,
+                me: me,
+                type: mes.message_type,
+                media: mes.message_media
+            } 
 
-    //     })) ?? []);
+        })) ?? []);
 
-    // }
+    }
 
     const getChatInfo = async () => {
         const { data, error } = await supabase
@@ -399,7 +401,7 @@ export default function Chat() {
             }
         ).subscribe();
 
-        // getMessages();
+        getMessages();
 
         return () => { supabase.removeChannel(channel) };
 
@@ -567,7 +569,7 @@ export default function Chat() {
                             <Text style={{ color: COLORS.primaryLight }}>Hey Daddy</Text>
                         </Pressable>
                     </View>
-                    {mockMessage.map((mes) => {
+                    {messages.map((mes) => {
                             if (mes.me) {
                                 if(mes.type === 'media' && mes.media) {
                                     if (mes.media.length === 1) {
@@ -602,8 +604,33 @@ export default function Chat() {
                                                 </View>
                                                 <Text style={{ color: COLORS.textPrimary, fontSize: 12, marginBottom: 8 }}>{mes.sentAt}</Text>
                                             </View>
-                                        </View>
-                                            
+                                        </View>   
+                                    } else if(mes.media.length === 3) {
+                                        return <View style={{ width: '100%' }}>
+                                            <View style={{ width: '100%', flexDirection: 'column', alignItems: 'flex-end' }}>
+                                                <View style={{ width: '90%', flexDirection: 'row', gap: 4 }}>
+                                                    {mes.media.map(m => {
+                                                        return m.type === "image"
+                                                            ? <Image style={{ width: '33%', borderRadius: 16, marginBlock: 8 }} height={92} source={{ uri: m.url }}></Image>
+                                                            : <VideoMessage url={m.url} width={'33%'} height={92} />
+                                                    })}
+                                                </View>
+                                                <Text style={{ color: COLORS.textPrimary, fontSize: 12, marginBottom: 8 }}>{mes.sentAt}</Text>
+                                            </View>
+                                        </View>   
+                                    } else if(mes.media.length === 4) {
+                                        return <View style={{ width: '100%' }}>
+                                            <View style={{ width: '100%', flexDirection: 'column', alignItems: 'flex-end' }}>
+                                                <View style={{ width: '70%', flexDirection: 'row', gap: 4, flexWrap: 'wrap' }}>
+                                                    {mes.media.map(m => {
+                                                        return m.type === "image"
+                                                            ? <Image style={{ width: '49%', borderRadius: 16 }} height={92} source={{ uri: m.url }}></Image>
+                                                            : <VideoMessage url={m.url} width={'49%'} height={92} />
+                                                    })}
+                                                </View>
+                                                <Text style={{ color: COLORS.textPrimary, fontSize: 12, marginBottom: 8 }}>{mes.sentAt}</Text>
+                                            </View>
+                                        </View>   
                                     }
                                 }
                                 return (
