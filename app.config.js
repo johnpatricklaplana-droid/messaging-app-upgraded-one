@@ -32,6 +32,13 @@ export default {
     plugins: [
       "expo-image",
       [
+        "expo-video",
+        {
+          "supportsBackgroundPlayback": true,
+          "supportsPictureInPicture": true
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           backgroundColor: "#208AEF",

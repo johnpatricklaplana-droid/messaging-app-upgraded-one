@@ -3,6 +3,7 @@ import { useUser } from "@/context/UserContext";
 import { supabase } from "@/lib/supabase";
 import { useNavigation, useRoute } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
+import { useVideoPlayer, VideoView } from 'expo-video';
 import {
     ArrowLeft,
     CheckCircleIcon,
@@ -16,13 +17,37 @@ import {
     SendHorizontalIcon,
     Smile,
     Trash2,
-    Video,
+    VideoIcon,
     X
 } from "lucide-react-native";
 import { ReactNode, useEffect, useRef, useState } from "react";
-import { Animated, Image, Keyboard, KeyboardEvent, Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { Animated, DimensionValue, Image, Keyboard, KeyboardEvent, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { formatMessageTime } from "./helper.tsx/formatDate";
+
+function VideoMessage({ url, width, height }: { url: string, width: DimensionValue, height: DimensionValue }) {
+
+    const [play, setPlay] = useState(false);
+
+    const player = useVideoPlayer(url, player => {
+        player.loop = true;
+    });
+
+    return (
+        <VideoView
+            style={{ 
+                width: width,
+                height: height,
+                borderRadius: 16,
+                backgroundColor: COLORS.primaryTint,
+                marginBlock: 8
+            }}
+            player={player}
+            fullscreenOptions={{ enable: true }}
+            allowsPictureInPicture
+            nativeControls
+        />
+    );
+};
 
 export default function Chat() {
 
@@ -110,8 +135,63 @@ export default function Chat() {
         messageId: string,
         sender_id: string,
         text_message: string,
-        me: boolean
+        me: boolean,
+        type: string,
+        media: MessageMedia[] | null
     };
+
+    interface MessageMedia {
+        url: string,
+        type: string
+    }
+
+    const mockMessage: Message[] = [
+        { 
+            sentAt:  '2026-05-25T15:49:59.011129+00:00', 
+            messageId: 'jlkafjlkdsaflsslfjalsks;f', 
+            sender_id: 'dkfjalkf', 
+            text_message: 'f;djfa', 
+            me: true, 
+            type: 'media',
+            media: null
+        },
+        { 
+            sentAt:  '2026-05-25T15:49:59.011129+00:00', 
+            messageId: 'super random string', 
+            sender_id: 'dkfjalkf', 
+            text_message: 'f;djfa', 
+            me: true, 
+            type: 'media',
+            media: [{ url: 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4', type: 'video' }, { url: 'https://picsum.photos/200/300?random=3', type: 'image' } ]
+        }, 
+        { 
+            sentAt:  '2026-05-25T15:49:59.011129+00:00', 
+            messageId: 'uuid', 
+            sender_id: 'dkfjalkf', 
+            text_message: 'f;djfa', 
+            me: true, 
+            type: 'text',
+            media: null
+        },
+        {
+            sentAt: '2026-05-25T15:49:59.011129+00:00',
+            messageId: 'super random string',
+            sender_id: 'dkfjalkf',
+            text_message: 'f;djfa',
+            me: true,
+            type: 'media',
+            media: [{ url: 'https://www.w3schools.com/html/mov_bbb.mp4', type: 'video' }]
+        }, 
+        { 
+            sentAt:  '2026-05-25T15:49:59.011129+00:00', 
+            messageId: 'hehehhe', 
+            sender_id: 'dkfjalkf', 
+            text_message: 'f;djfa', 
+            me: true, 
+            type: 'text',
+            media: null
+        },
+    ]
 
     interface KaChat {
         avatarUrl: string,
@@ -214,34 +294,35 @@ export default function Chat() {
         
     }, [conversationIdFromMessages]);
 
-    const getMessages = async () => {
-        const { data, error } = await supabase
-            .from('messages')
-            .select('*')
-            .eq('conversation_id', conversationId)
-            .order('created_at', { ascending: false });
+    // const getMessages = async () => {
+    //     const { data, error } = await supabase
+    //         .from('messages')
+    //         .select('*')
+    //         .eq('conversation_id', conversationId)
+    //         .order('created_at', { ascending: false });
 
-        const sortedData = data?.reverse();
+    //     const sortedData = data?.reverse();
         
-        setMessages((sortedData?.map(mes => {
+    //     setMessages((sortedData?.map(mes => {
 
-            let me = false;
+    //         let me = false;
 
-            if(mes.sender_id === myId) {
-                me = true;
-            }
+    //         if(mes.sender_id === myId) {
+    //             me = true;
+    //         }
 
-            return {
-                messageId: mes.id,
-                sender_id: mes.sender_id,
-                sentAt: formatMessageTime(mes.created_at),
-                text_message: mes.text_message,
-                me: me
-            } 
+    //         return {
+    //             messageId: mes.id,
+    //             sender_id: mes.sender_id,
+    //             sentAt: formatMessageTime(mes.created_at),
+    //             text_message: mes.text_message,
+    //             me: me,
+    //             type: mes.type
+    //         } 
 
-        })) ?? []);
+    //     })) ?? []);
 
-    }
+    // }
 
     const getChatInfo = async () => {
         const { data, error } = await supabase
@@ -288,13 +369,14 @@ export default function Chat() {
                         me = true;
                     }
 
-                    setMessages(prev => [...prev, {
-                        messageId: payload.new.id,
-                        sender_id: payload.new.sender_id,
-                        sentAt: formatMessageTime(payload.new.created_at),
-                        text_message: payload.new.text_message,
-                        me: me
-                    }]);
+                    // setMessages(prev => [...prev, {
+                    //     messageId: payload.new.id,
+                    //     sender_id: payload.new.sender_id,
+                    //     sentAt: formatMessageTime(payload.new.created_at),
+                    //     text_message: payload.new.text_message,
+                    //     me: me,
+                    //     type: payload.new.type
+                    // }]);
                 } else if(payload.eventType === "UPDATE") {
                     const messageId = payload.new.id;
                     const newTextMessage = payload.new.text_message;
@@ -317,7 +399,7 @@ export default function Chat() {
             }
         ).subscribe();
 
-        getMessages();
+        // getMessages();
 
         return () => { supabase.removeChannel(channel) };
 
@@ -444,7 +526,7 @@ export default function Chat() {
                         </View>
                         <View style={{ flexDirection: 'row', gap: 8 }}>
                             <Pressable><Phone color={COLORS.textSecondary}></Phone></Pressable>
-                            <Pressable><Video color={COLORS.textSecondary}></Video></Pressable>
+                            <Pressable><VideoIcon color={COLORS.textSecondary}></VideoIcon></Pressable>
                             <Pressable><MoreVertical color={COLORS.textSecondary}></MoreVertical></Pressable>
                         </View>
                     </View>
@@ -485,8 +567,45 @@ export default function Chat() {
                             <Text style={{ color: COLORS.primaryLight }}>Hey Daddy</Text>
                         </Pressable>
                     </View>
-                    {messages.map((mes) => {
+                    {mockMessage.map((mes) => {
                             if (mes.me) {
+                                if(mes.type === 'media' && mes.media) {
+                                    if (mes.media.length === 1) {
+                                        if(mes.media?.[0].type === 'image') {
+                                            return <View style={{ width: '100%' }}>
+                                                <View style={{ width: '100%', flexDirection: 'column', alignItems: 'flex-end' }}>
+                                                    <Pressable style={{ width: '70%' }}>
+                                                        <Image style={{ width: '100%', borderRadius: 16, marginBlock: 8 }} height={300} source={{ uri: mes.media?.[0].url }}></Image>
+                                                    </Pressable>
+                                                    <Text style={{ color: COLORS.textPrimary, fontSize: 12, marginBottom: 8 }}>{mes.sentAt}</Text>
+                                                </View>
+                                            </View>
+                                        } else if(mes.media?.[0].type === 'video') {
+                                            return <View style={{ width: '100%' }}>
+                                                <View style={{ width: '100%', flexDirection: 'column', alignItems: 'flex-end' }}>
+                                                    <View style={{ width: '70%' }}>
+                                                        <VideoMessage url={mes.media?.[0].url} width={'100%'} height={300} />
+                                                    </View>
+                                                    <Text style={{ color: COLORS.textPrimary, fontSize: 12, marginBottom: 8 }}>{mes.sentAt}</Text>
+                                                </View>
+                                            </View>
+                                        } 
+                                    } else if (mes.media.length === 2) {
+                                        return <View style={{ width: '100%' }}>
+                                            <View style={{ width: '100%', flexDirection: 'column', alignItems: 'flex-end' }}>
+                                                <View style={{ width: '70%', flexDirection: 'row', gap: 4 }}>
+                                                    {mes.media.map(m => {
+                                                        return m.type === "image" 
+                                                            ? <Image style={{ width: '50%', borderRadius: 16, marginBlock: 8 }} height={120} source={{ uri: m.url }}></Image>
+                                                            : <VideoMessage url={m.url} width={'50%'} height={120} />
+                                                    })}
+                                                </View>
+                                                <Text style={{ color: COLORS.textPrimary, fontSize: 12, marginBottom: 8 }}>{mes.sentAt}</Text>
+                                            </View>
+                                        </View>
+                                            
+                                    }
+                                }
                                 return (
                                     <View
                                         style={{ marginTop: 8, marginBottom: 8, gap: 8, flexDirection: 'row', alignItems: 'flex-end', maxWidth: '80%', alignSelf: 'flex-end' }}
