@@ -544,6 +544,9 @@ export default function Chat() {
                         onContentSizeChange={() => 
                             ScrollViewRef.current?.scrollToEnd({ animated: false })
                         }
+                        onLayout={() => 
+                            ScrollViewRef.current?.scrollToEnd({ animated: false })
+                        }
                         contentContainerStyle={{ paddingHorizontal: 22 }}
                     >
                     <View style={{ margin: 'auto', alignItems: 'center', paddingTop: '40%', marginBottom: 32 }}>
@@ -737,16 +740,6 @@ export default function Chat() {
                                                     style={{ borderRadius: 50 }}
                                                 ></Image>
                                                 <View style={{ width: '100%' }}>
-                                                    <Pressable style={({ pressed }) => ({
-                                                        borderBottomLeftRadius: 5,
-                                                        padding: 16,
-                                                        borderRadius: 16,
-                                                        backgroundColor: pressed ? 'rgba(0,0,0,0.1)' : COLORS.primaryTint,
-                                                        transform: [{ scale: pressed ? 0.9 : 1 }],
-                                                        width: '100%'
-                                                    })}>
-                                                        <Text style={{ color: COLORS.textPrimary }}>{mes.text_message}</Text>
-                                                    </Pressable>
                                                     <VideoMessage 
                                                         player={player} 
                                                         width={'100%'} 
@@ -785,8 +778,8 @@ export default function Chat() {
                                                                 player={player} 
                                                                 width={'50%'} 
                                                                 height={120} 
-                                                                isActive={mes.media?.[0].url === activeVideoUrl}
-                                                                onPress={() => setActiveVideoUrl(mes.media?.[0].url!)}
+                                                                isActive={m.url === activeVideoUrl}
+                                                                onPress={() => setActiveVideoUrl(m.url!)}
                                                                 onLongPress={() => null}
                                                             />
                                                     })}
@@ -815,8 +808,8 @@ export default function Chat() {
                                                                 player={player} 
                                                                 width={'33%'} 
                                                                 height={92} 
-                                                                isActive={mes.media?.[0].url === activeVideoUrl}
-                                                                onPress={() => setActiveVideoUrl(mes.media?.[0].url!)}
+                                                                isActive={m.url === activeVideoUrl}
+                                                                onPress={() => setActiveVideoUrl(m.url!)}
                                                                 onLongPress={() => null}
                                                             />
                                                     })}
@@ -850,8 +843,8 @@ export default function Chat() {
                                                                 player={player} 
                                                                 width={'49%'} 
                                                                 height={92} 
-                                                                isActive={mes.media?.[0].url === activeVideoUrl}
-                                                                onPress={() => setActiveVideoUrl(mes.media?.[0].url!)}
+                                                                isActive={m.url === activeVideoUrl}
+                                                                onPress={() => setActiveVideoUrl(m.url)}
                                                                 onLongPress={() => null}
                                                             />
                                                     })}
