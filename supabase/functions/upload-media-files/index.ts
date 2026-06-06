@@ -139,7 +139,11 @@ Deno.serve(async (req) => {
 
     if (error) throw error;
 
-    return uploads;
+    return new Response(JSON.stringify({
+            message: 'upload success'
+        }),
+        { status: 200 }
+    );
 
     } catch (error) {
         return new Response(

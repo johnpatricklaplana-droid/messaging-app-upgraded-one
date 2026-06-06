@@ -23,6 +23,7 @@ import {
 import { ReactNode, useEffect, useRef, useState } from "react";
 import { Animated, DimensionValue, Image, Keyboard, KeyboardEvent, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { uploadMedia } from '../../App.js';
 import { formatMessageTime } from "./helper.tsx/formatDate";
 
 function VideoMessage({ url, width, height }: { url: string, width: DimensionValue, height: DimensionValue }) {
@@ -90,36 +91,7 @@ export default function Chat() {
         });
         
         if(!result.canceled) {
-
-            const { data: { session } } = await supabase.auth.getSession();
-
-            const files = await Promise.all(
-                result.assets.map(async (asset) => {
-                    const response = await fetch(asset.uri);
-                    const arrayBuffer = await response.arrayBuffer();
-                    const bytes = new Uint8Array(arrayBuffer);
-
-                    let content = '';
-                    for (let i = 0; i < bytes.length; i++) {
-                        content += String.fromCharCode(bytes[i]);
-                    }
-
-                    return {
-                        name: `${myId}${Date.now()}${Math.random()}.${asset.mimeType?.split('/').pop()}`,
-                        type: asset.mimeType,
-                        content: btoa(content),
-                    };
-                })
-            );
-
-            const response = await fetch('https://lbuoshnzslfbdtvbmfrg.supabase.co/functions/v1/upload-media-files', {
-                method: 'POST',
-                body: JSON.stringify({ conversationId: conversationId, files }),
-                headers: {
-                    Authorization: `Bearer ${session?.access_token}`
-                }
-            });
-
+            uploadMedia(result, conversationId, myId);
         }
 
     }
@@ -144,54 +116,6 @@ export default function Chat() {
         message_id: string,
         id: string
     }
-
-    const mockMessage: Message[] = [
-        { 
-            sentAt:  '2026-05-25T15:49:59.011129+00:00', 
-            messageId: 'jlkafjlkdsaflsslfjalsks;f', 
-            sender_id: 'dkfjalkf', 
-            text_message: 'f;djfa', 
-            me: true, 
-            type: 'media',
-            media: null
-        },
-        { 
-            sentAt:  '2026-05-25T15:49:59.011129+00:00', 
-            messageId: 'super random string', 
-            sender_id: 'dkfjalkf', 
-            text_message: 'f;djfa', 
-            me: true, 
-            type: 'media',
-            media: [{ message_id: 'fkljafkjs', id: 'fkjaf', url: 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4', type: 'video' }, { message_id: 'fkljafkjs', id: 'fkjaf', url: 'https://picsum.photos/200/300?random=3', type: 'image' } ]
-        }, 
-        { 
-            sentAt:  '2026-05-25T15:49:59.011129+00:00', 
-            messageId: 'uuid', 
-            sender_id: 'dkfjalkf', 
-            text_message: 'f;djfa', 
-            me: true, 
-            type: 'media',
-            media: [{ message_id: 'fkljafkjs', id: 'fkjaf', url: 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4', type: 'video' }, { message_id: 'fkljafkjs', id: 'fkjaf', url: 'https://picsum.photos/200/300?random=3', type: 'image' }, { message_id: 'fkljafkjs', id: 'fkjaf', url: 'https://picsum.photos/200/300?random=3', type: 'image' }]
-        },
-        {
-            sentAt: '2026-05-25T15:49:59.011129+00:00',
-            messageId: 'super random string',
-            sender_id: 'dkfjalkf',
-            text_message: 'f;djfa',
-            me: true,
-            type: 'media',
-            media: [{ message_id: 'fkljafkjs', id: 'fkjaf', url: 'https://www.w3schools.com/html/mov_bbb.mp4', type: 'video' }]
-        }, 
-        { 
-            sentAt:  '2026-05-25T15:49:59.011129+00:00', 
-            messageId: 'hehehhe', 
-            sender_id: 'dkfjalkf', 
-            text_message: 'f;djfa', 
-            me: true, 
-            type: 'media',
-            media: [{ message_id: 'fkljafkjs', id: 'fkjaf', url: 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4', type: 'video' }, { message_id: 'fkljafkjs', id: 'fkjaf', url: 'https://picsum.photos/200/300?random=3', type: 'image' }, { message_id: 'fkljafkjs', id: 'fkjaf', url: 'https://picsum.photos/200/300?random=3', type: 'image' }, { message_id: 'fkljafkjs', id: 'fkjaf', url: 'https://picsum.photos/200/300?random=3', type: 'image' }]
-        },
-    ]
 
     interface KaChat {
         avatarUrl: string,
@@ -364,21 +288,25 @@ export default function Chat() {
                 table: 'messages',
                 filter: `conversation_id=eq.${conversationId}`
             },
-            (payload) => {
+            async (payload) => {
                 if(payload.eventType === "INSERT") {
                     let me = false;
                     if (payload.new.sender_id === myId) {
                         me = true;
                     }
+                    console.log("text message?");
+                    console.log(payload.new.text_message);
+                    if(!payload.new.text_message) return;
 
-                    // setMessages(prev => [...prev, {
-                    //     messageId: payload.new.id,
-                    //     sender_id: payload.new.sender_id,
-                    //     sentAt: formatMessageTime(payload.new.created_at),
-                    //     text_message: payload.new.text_message,
-                    //     me: me,
-                    //     type: payload.new.type
-                    // }]);
+                    setMessages(prev => [...prev, {
+                        messageId: payload.new.id,
+                        sender_id: payload.new.sender_id,
+                        sentAt: formatMessageTime(payload.new.created_at),
+                        text_message: payload.new.text_message,
+                        me: me,
+                        type: payload.new.type,
+                        media: null
+                    }]);
                 } else if(payload.eventType === "UPDATE") {
                     const messageId = payload.new.id;
                     const newTextMessage = payload.new.text_message;
@@ -396,10 +324,47 @@ export default function Chat() {
 
                     setMessages(newMessages);
 
-
                 }
             }
-        ).subscribe();
+            )
+            .on('postgres_changes', {
+                event: 'INSERT',
+                schema: 'public',
+                table: 'message_media'
+            },
+             async (payload) => {
+                const { data, error } = await supabase
+                    .from('messages')
+                    .select('*, message_media(*)')
+                    .eq('id', payload.new.message_id)
+                    .single();
+
+                let me: boolean;
+
+                if(data.sender_id === myId) {
+                    me = true;
+                } else {
+                    me = false;
+                }
+
+                 setMessages(prev => { 
+                    const alreadyExist = prev.find(pre => pre.messageId === data.id);
+
+                    if(alreadyExist) return prev;
+
+                    return [...prev, {
+                     messageId: data.id,
+                     sender_id: data.sender_id,
+                     sentAt: formatMessageTime(data.created_at),
+                     text_message: data.text_message,
+                     me: me,
+                     type: data.message_type,
+                     media: data.message_media
+                 }]
+                });
+
+            })
+        .subscribe();
 
         getMessages();
 
@@ -577,7 +542,7 @@ export default function Chat() {
                                             return <View style={{ width: '100%' }}>
                                                 <View style={{ width: '100%', flexDirection: 'column', alignItems: 'flex-end' }}>
                                                     <Pressable style={{ width: '70%' }}>
-                                                        <Image style={{ width: '100%', borderRadius: 16, marginBlock: 8 }} height={300} source={{ uri: mes.media?.[0].url }}></Image>
+                                                        <Image onLoad={() => ScrollViewRef.current?.scrollToEnd({ animated: false })} style={{ width: '100%', borderRadius: 16, marginBlock: 8 }} height={300} source={{ uri: mes.media?.[0].url }}></Image>
                                                     </Pressable>
                                                     <Text style={{ color: COLORS.textPrimary, fontSize: 12, marginBottom: 8 }}>{mes.sentAt}</Text>
                                                 </View>
@@ -654,6 +619,134 @@ export default function Chat() {
                                     </View>
                                 );
                             } else {
+                                if(mes.type === 'media' && mes.media) {
+                                    if (mes.media.length === 1) {
+                                        if(mes.media?.[0].type === 'image') {
+                                            return <View
+                                                style={{ marginTop: 8, marginBottom: 8, gap: 8, flexDirection: 'row', alignItems: 'flex-end', maxWidth: '70%' }}
+                                                key={mes.messageId}
+                                            >
+                                                <Image
+                                                    source={{ uri: kaChatProfile?.avatarUrl }}
+                                                    width={32}
+                                                    height={32}
+                                                    style={{ borderRadius: 50 }}
+                                                ></Image>
+                                                <View style={{ width: '100%' }}>
+                                                    <Pressable style={({ pressed }) => ({
+                                                        borderRadius: 16,
+                                                        width: '100%'
+                                                    })}>
+                                                    <Image style={{ width: '100%', borderRadius: 16, marginBlock: 8 }} height={300} source={{ uri: mes.media?.[0].url }}></Image>
+                                                    </Pressable>
+                                                    <Text style={{ color: COLORS.textPrimary, fontWeight: 700, fontSize: 12 }}>{mes.sentAt}</Text>
+                                                </View>
+                                            </View>
+                                        } else if(mes.media?.[0].type === 'video') {
+                                            return <View
+                                                style={{ marginTop: 8, marginBottom: 8, gap: 8, flexDirection: 'row', alignItems: 'flex-end', maxWidth: '70%' }}
+                                                key={mes.messageId}
+                                            >
+                                                <Image
+                                                    source={{ uri: kaChatProfile?.avatarUrl }}
+                                                    width={32}
+                                                    height={32}
+                                                    style={{ borderRadius: 50 }}
+                                                ></Image>
+                                                <View style={{ width: '100%' }}>
+                                                    <Pressable style={({ pressed }) => ({
+                                                        borderBottomLeftRadius: 5,
+                                                        padding: 16,
+                                                        borderRadius: 16,
+                                                        backgroundColor: pressed ? 'rgba(0,0,0,0.1)' : COLORS.primaryTint,
+                                                        transform: [{ scale: pressed ? 0.9 : 1 }],
+                                                        width: '100%'
+                                                    })}>
+                                                        <Text style={{ color: COLORS.textPrimary }}>{mes.text_message}</Text>
+                                                    </Pressable>
+                                                    <VideoMessage url={mes.media?.[0].url} width={'100%'} height={300} />
+                                                </View>
+                                            </View>
+                                        } 
+                                    } else if (mes.media.length === 2) {
+                                        return <View
+                                            style={{ marginTop: 8, marginBottom: 8, gap: 8, flexDirection: 'row', alignItems: 'flex-end', maxWidth: '70%' }}
+                                            key={mes.messageId}
+                                        >
+                                            <Image
+                                                source={{ uri: kaChatProfile?.avatarUrl }}
+                                                width={32}
+                                                height={32}
+                                                style={{ borderRadius: 50 }}
+                                            ></Image>
+                                            <View style={{ width: '100%' }}>
+                                                <View style={{
+                                                    borderBottomLeftRadius: 5,
+                                                    borderRadius: 16,
+                                                    gap: 4,
+                                                    width: '100%',
+                                                    flexDirection: 'row'
+                                                }}>
+                                                    {mes.media.map(m => {
+                                                        return m.type === "image"
+                                                            ? <Image style={{ width: '50%', borderRadius: 16, marginBlock: 8 }} height={120} source={{ uri: m.url }}></Image>
+                                                            : <VideoMessage url={m.url} width={'50%'} height={120} />
+                                                    })}
+                                                </View>
+                                                <Text style={{ color: COLORS.textPrimary, fontWeight: 700, fontSize: 12 }}>{mes.sentAt}</Text>
+                                            </View>
+                                        </View>
+                                    } else if(mes.media.length === 3) {
+                                        return <View
+                                            style={{ marginTop: 8, marginBottom: 8, gap: 8, flexDirection: 'row', alignItems: 'flex-start', maxWidth: '80%' }}
+                                            key={mes.messageId}
+                                        >
+                                            <Image
+                                                source={{ uri: kaChatProfile?.avatarUrl }}
+                                                width={32}
+                                                height={32}
+                                                style={{ borderRadius: 50 }}
+                                            ></Image>
+                                            <View>
+                                                <View style={{ width: '100%', flexDirection: 'row', gap: 4 }}> 
+                                                    {mes.media.map(m => {
+                                                        return m.type === "image"
+                                                            ? <Image style={{ width: '33%', borderRadius: 16, marginBlock: 8 }} height={92} source={{ uri: m.url }}></Image>
+                                                            : <VideoMessage url={m.url} width={'33%'} height={92} />
+                                                    })}
+                                                </View>
+                                                <Text style={{ color: COLORS.textPrimary, fontWeight: 700, fontSize: 12 }}>{mes.sentAt}</Text>
+                                            </View>
+                                        </View>
+                                    } else if(mes.media.length === 4) {
+                                        return <View
+                                            style={{ marginTop: 8, marginBottom: 8, gap: 8, flexDirection: 'row', alignItems: 'flex-end', maxWidth: '80%' }}
+                                            key={mes.messageId}
+                                        >
+                                            <Image
+                                                source={{ uri: kaChatProfile?.avatarUrl }}
+                                                width={32}
+                                                height={32}
+                                                style={{ borderRadius: 50 }}
+                                            ></Image>
+                                            <View style={{ width: '100%' }}>
+                                                <View style={{
+                                                    width: '100%',
+                                                    flexDirection: 'row',
+                                                    flexWrap: 'wrap',
+                                                    gap: 4
+                                                }}>
+                                                    {mes.media.map(m => {
+                                                        return m.type === "image"
+                                                            ? <Image style={{ width: '49%', borderRadius: 16 }} height={92} source={{ uri: m.url }}></Image>
+                                                            : <VideoMessage url={m.url} width={'49%'} height={92} />
+                                                    })}
+                                                </View>
+                                                <Text style={{ color: COLORS.textPrimary, fontWeight: 700, fontSize: 12 }}>{mes.sentAt}</Text>
+                                            </View>
+                                        </View>
+                                    }
+                                }
 
                                 return (
                                     <View

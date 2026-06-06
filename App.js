@@ -39,6 +39,45 @@ Notifications.setNotificationHandler({
 
 name();
 
+export async function uploadMedia(result, conversationId, myId) {
+    const { data: { session } } = await supabase.auth.getSession();
+
+    const files = await Promise.all(
+        result.assets.map(async (asset) => {
+            const response = await fetch(asset.uri);
+            const arrayBuffer = await response.arrayBuffer();
+            const bytes = new Uint8Array(arrayBuffer);
+
+            let content = '';
+            for (let i = 0; i < bytes.length; i++) {
+                content += String.fromCharCode(bytes[i]);
+            }
+
+            return {
+                name: `${myId}${Date.now()}${Math.random()}.${asset.mimeType?.split('/').pop()}`,
+                type: asset.mimeType,
+                content: btoa(content),
+            };
+        })
+    );
+
+    const response = await fetch('https://lbuoshnzslfbdtvbmfrg.supabase.co/functions/v1/upload-media-files', {
+        method: 'POST',
+        body: JSON.stringify({ conversationId: conversationId, files }),
+        headers: {
+            Authorization: `Bearer ${session?.access_token}`
+        }
+    });
+
+    console.log(response);
+
+    if (response.status === 200) {
+        console.log("TODO");
+    } else {
+        console.log("TODO: ERROR MESSAGE HAPPENS");
+    }
+}
+
 const Tab = createBottomTabNavigator();
 
 function TabGroup () {
