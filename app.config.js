@@ -22,8 +22,7 @@ export default {
       "animateByDefault": false,
       "predictiveBackGestureEnabled": false,
       "package": "com.anonymous.messagingapplastone",
-      "googleServicesFile": "./google-services.json",
-      "softwareKeyboardLayoutMode": "pan"
+      "googleServicesFile": "./google-services.json"
     },
     web: {
       output: "single",
@@ -41,10 +40,11 @@ export default {
       [
         "expo-splash-screen",
         {
-          backgroundColor: "#208AEF",
+          backgroundColor: "#07080F",
           android: {
-            image: "./assets/images/react-logo@3x.png",
-            imageWidth: 76
+            image: "./assets/images/heydaddy_logo.png",
+            imageWidth: 220,
+            resizeMode: "contain"
           }
         }
       ],

@@ -13,14 +13,12 @@ import {
     ExpandIcon,
     Forward,
     ImageIcon,
-    Mic,
     MoreVertical,
     Phone,
     PlayCircle,
     RotateCcw,
     RotateCw,
     SendHorizontalIcon,
-    Smile,
     Trash2,
     VideoIcon,
     Volume2Icon,
@@ -244,7 +242,7 @@ export default function Chat() {
     const keyboardHeight = useRef(new Animated.Value(0)).current;
     const optionAnimation = useRef(new Animated.Value(400)).current;
 
-    // KEYBOARD ANIMATION
+    // KEYBOARD ANIMATION USE ONLY IN DEVELOPMENT
     useEffect(() => {
         const showSub = Keyboard.addListener('keyboardDidShow', (e: KeyboardEvent) => {
             console.log(e);
@@ -268,8 +266,6 @@ export default function Chat() {
             hideSub.remove();
         };
     }, []);
-
-    console.log("LOOPING?");
 
     const pickImages = async () => {
         const result = await ImagePicker.launchImageLibraryAsync({
@@ -362,7 +358,7 @@ export default function Chat() {
     const forward = () => {
         player.currentTime = Math.min(
             player.duration,
-            player.duration + 10
+            player.currentTime + 10
         )
     };
 
@@ -745,36 +741,6 @@ export default function Chat() {
                         }
                         contentContainerStyle={{ paddingHorizontal: 22 }}
                     >
-                    <View style={{ margin: 'auto', alignItems: 'center', paddingTop: '40%', marginBottom: 32 }}>
-                        <Image
-                            width={100}
-                            height={100}
-                            style={{ borderRadius: 50, margin: 8 }}
-                            source={{ uri: kaChatProfile?.avatarUrl }}
-                        >
-
-                        </Image>
-                        <Text style={{ textAlign: 'center', color: COLORS.textPrimary, fontSize: 22, marginBottom: 4, fontWeight: 700 }}>{kaChatProfile?.name}</Text>
-                        <Text style={{ textAlign: "center", fontSize: 12, marginBottom: 22, color: COLORS.textMuted }}>johnyHeyDaddy@gmail.com</Text>
-                        <Text style={{ color: COLORS.textSecondary, textAlign: "center", marginBottom: 8 }}>your not connected</Text>
-                        <Text style={{ marginBottom: 16, color: COLORS.textSecondary, textAlign: "center" }}>Say hi to start the conversation!</Text>
-                        <Pressable
-                            style={{
-                                backgroundColor: COLORS.primaryTint,
-                                borderColor: COLORS.primary,
-                                borderWidth: 1,
-                                borderRadius: 16,
-                                flexDirection: 'row',
-                                gap: 8,
-                                paddingHorizontal: 16,
-                                paddingVertical: 8,
-                                justifyContent: 'center'
-                            }}
-                        >
-                            <Text>👏</Text>
-                            <Text style={{ color: COLORS.primaryLight }}>Hey Daddy</Text>
-                        </Pressable>
-                    </View>
                     {messages.map((mes) => {
                             if (mes.me) {
                                 if(mes.type === 'media' && mes.media) {
@@ -1159,12 +1125,6 @@ export default function Chat() {
                                 >
     
                                 </TextInput>
-                                <View style={{ flexDirection: 'row', position: 'absolute', right: 8 }}>
-                                    <Pressable>
-                                        <Smile color={COLORS.textMuted}></Smile>
-                                    </Pressable>
-                                    <Mic color={COLORS.textMuted}></Mic>
-                                </View>
                             </View>
                             {editMessageMode === false &&<Pressable
                                 style={({ pressed }) => ({
