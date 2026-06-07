@@ -1,6 +1,7 @@
 import { COLORS } from "@/constants/themeMyVersion";
 import { useUser } from "@/context/UserContext";
 import { supabase } from "@/lib/supabase";
+import Slider from '@react-native-community/slider';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import { useVideoPlayer, VideoPlayer, VideoView } from 'expo-video';
@@ -9,35 +10,82 @@ import {
     CheckCircleIcon,
     Copy,
     Edit,
+    ExpandIcon,
     Forward,
     ImageIcon,
     Mic,
     MoreVertical,
     Phone,
     PlayCircle,
+    RotateCcw,
+    RotateCw,
     SendHorizontalIcon,
     Smile,
     Trash2,
     VideoIcon,
+    Volume2Icon,
     X
 } from "lucide-react-native";
 import { ReactNode, useEffect, useRef, useState } from "react";
-import { Animated, DimensionValue, Image, Keyboard, KeyboardEvent, Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { Animated, DimensionValue, Image, Keyboard, KeyboardEvent, Pressable, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { uploadMedia } from '../../App.js';
 import { formatMessageTime } from "./helper.tsx/formatDate";
 
-function VideoMessage({ player, width, height, isActive, onPress, onLongPress }: 
+function VideoMessage({ 
+    player, 
+    width, 
+    height, 
+    isActive, 
+    onPress, 
+    onLongPress, 
+    play,
+    forward,
+    rewind,
+    currentTime,
+    duration
+}: 
     Readonly<{ 
         isActive: boolean, 
         player: VideoPlayer, 
         width: DimensionValue, 
         height: DimensionValue,
         onPress: () => void,
-        onLongPress: () => void
+        onLongPress: () => void,
+        play: () => void,
+        rewind: () => void,
+        forward: () => void,
+        currentTime: number,
+        duration: number
     }>) {
 
-    const touchTimer = useRef<any>(null);
+    const videoRef = useRef<VideoView>(null);
+
+    const [showCostumeControls, setShowCostumControls] = useState(true);
+
+    const formatTime = (time: number) => {
+
+        const mins = Math.floor(time / 60);
+        const secs = Math.floor(time % 60);
+
+        return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+    };
+
+    const openFullScreen = () => {
+        videoRef.current?.enterFullscreen();
+    }
+
+    const closeOpenCostumControls = () => {
+        if(showCostumeControls) {
+            setShowCostumControls(false);
+        } else {
+            setShowCostumControls(true);
+        }
+    };
+
+    const handleFullScreenTransition = () => {
+        openFullScreen();
+    };
 
     if(!isActive) {
         return (
@@ -58,26 +106,132 @@ function VideoMessage({ player, width, height, isActive, onPress, onLongPress }:
     }
 
     return (
-        <VideoView
-            style={{ 
-                width: width,
-                height: height,
-                borderRadius: 16,
-                backgroundColor: COLORS.primaryTint,
-            }}
-            onTouchStart={() => {
-                touchTimer.current = setTimeout(() => {
-                    onLongPress();
-                }, 500);
-            }}
-            onTouchEnd={() => {
-                clearTimeout(touchTimer.current);
-            }}
-            player={player}
-            fullscreenOptions={{ enable: true }}
-            allowsPictureInPicture
-            nativeControls={true}
-        />
+        <View
+            style={{ width: width, height: height, position: 'relative' }}
+        >
+            <TouchableOpacity
+                style={{ 
+                    position: 'absolute', 
+                    top: 8, right: 8, 
+                    pointerEvents: showCostumeControls ? 'auto' : 'none',
+                    opacity: showCostumeControls ? 1 : 0
+                }}
+            >
+                <Volume2Icon color={COLORS.textPrimary}></Volume2Icon>
+            </TouchableOpacity>
+            <View
+                style={{ 
+                    pointerEvents: 'none', 
+                    width: '100%', 
+                    height: '100%' 
+                }}
+            >
+                <VideoView
+                    ref={videoRef}
+                    style={{
+                        width: '100%',
+                        height: '100%',
+                        borderRadius: 16,
+                        backgroundColor: COLORS.primaryTint,
+                    }}
+                    player={player}
+                    fullscreenOptions={{ enable: false }}
+                    allowsPictureInPicture
+                    nativeControls={false}
+                />
+            </View>
+
+            <Pressable
+                style={{ 
+                    position: 'absolute', 
+                    width: '100%', 
+                    height: '100%', 
+                    backgroundColor: '#0000004D',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    top: 0,
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    zIndex: 10,
+                    opacity: showCostumeControls ? 1 : 0
+                }}
+                onPress={closeOpenCostumControls}
+                onLongPress={onLongPress}
+                delayLongPress={200}
+            >
+                <View 
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: 22 }}
+                >
+                    <TouchableOpacity
+                        onPress={rewind}
+                        style={{ pointerEvents: showCostumeControls ? 'auto' : 'none' }}
+                    >
+                        <RotateCcw color={'white'}></RotateCcw>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        onPress={play}
+                        style={{
+                            backgroundColor: 'white',
+                            paddingVertical: 8,
+                            paddingHorizontal: 16,
+                            zIndex: 10,
+                            borderRadius: 999
+                        }}
+                    >
+                        <Text>Play</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        onPress={forward}
+                        style={{ pointerEvents: showCostumeControls ? 'auto' : 'none' }}
+                    >
+                        <RotateCw color={'white'}></RotateCw>
+                    </TouchableOpacity>
+                </View>
+            </Pressable>
+            <View
+                style={{ 
+                    position: 'absolute', 
+                    bottom: 0, 
+                    left: 0, 
+                    right: 0,
+                    flexDirection: 'row',
+                    zIndex: 11,
+                    padding: 8,
+                    gap: 8,
+                    pointerEvents: showCostumeControls ? 'auto' : 'none', 
+                    opacity: showCostumeControls ? 1 : 0 
+                }}
+            >
+                <Text style={{ color: COLORS.textPrimary }}>
+                    {formatTime(currentTime)}
+                </Text>
+                <Slider
+                    style={{ flex: 1 }}
+                    minimumValue={0}
+                    maximumValue={duration}
+                    value={currentTime}
+                    minimumTrackTintColor="#fff"
+                    maximumTrackTintColor="#777"
+                    thumbTintColor="#fff"
+                    onSlidingComplete={(value) => {
+                        player.currentTime = value;
+                    }}
+                >
+
+                </Slider>
+                <Text
+                    style={{ color: COLORS.textPrimary }}
+                >
+                    {formatTime(duration)}
+                </Text>
+                <TouchableOpacity
+                    onPress={(handleFullScreenTransition)}
+                >
+                    <ExpandIcon size={18} color={COLORS.textPrimary}></ExpandIcon>
+                </TouchableOpacity>
+            </View>
+        </View>
     );
 };
 
@@ -167,12 +321,54 @@ export default function Chat() {
     const [editMessageMode, setEditMessageMode] = useState(false);
     const [messageToEdit, setMessageToEdit] = useState<Message | null>();
     const [activeVideoUrl, setActiveVideoUrl] = useState<string>('');
-
+    const [isVideoMuted, setIsVideoMuted] = useState(false);
+    const [isPlaying, setIsPlaying] = useState(true);
+    const [videoCurrentTime, setVideoCurrentTime] = useState<number>(0);
+    const [videoDuration, setVideoDuration] = useState<number>(0);
 
     const player = useVideoPlayer(activeVideoUrl, player => {
         player.loop = false;
         player.play();
     });
+
+    console.log(player.status);
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setVideoCurrentTime(player.currentTime);
+            setVideoDuration(player.duration);
+        }, 300);
+
+        return () => clearInterval(interval);
+    }, [activeVideoUrl]);
+
+    const rewind = () => {
+        player.currentTime = Math.max(
+            0, 
+            player.currentTime - 10
+        );
+    };
+
+    const togglePlay = () => {
+        if(isPlaying) {
+            player.pause();
+            setIsPlaying(false);
+        } else {
+            player.play();
+            setIsPlaying(true);
+        }
+    };
+
+    const forward = () => {
+        player.currentTime = Math.min(
+            player.duration,
+            player.duration + 10
+        )
+    };
+
+    const toogleMute = () => {
+        player.muted = isVideoMuted;
+    }
 
     const input = useRef<TextInput>(null);
 
@@ -607,6 +803,11 @@ export default function Chat() {
                                                             isActive={mes.media?.[0].url === activeVideoUrl} 
                                                             onPress={() => setActiveVideoUrl(mes.media?.[0].url!)}
                                                             onLongPress={() => messageIdTemporaryStorageReadyForOperations(mes)}
+                                                            play={togglePlay}
+                                                            rewind={rewind}
+                                                            forward={forward}
+                                                            currentTime={videoCurrentTime}
+                                                            duration={videoDuration}
                                                         />
                                                     </View>
                                                     <Text style={{ color: COLORS.textPrimary, fontSize: 12, marginBottom: 8 }}>{mes.sentAt}</Text>
@@ -630,6 +831,11 @@ export default function Chat() {
                                                                 isActive={mes.media?.[0].url === activeVideoUrl}
                                                                 onPress={() => setActiveVideoUrl(mes.media?.[0].url!)}
                                                                 onLongPress={() => messageIdTemporaryStorageReadyForOperations(mes)}
+                                                                play={togglePlay}
+                                                                rewind={rewind}
+                                                                forward={forward}
+                                                                currentTime={videoCurrentTime}
+                                                                duration={videoDuration}
                                                             />
                                                     })}
                                                 </View>
@@ -653,6 +859,11 @@ export default function Chat() {
                                                                 isActive={mes.media?.[0].url === activeVideoUrl}
                                                                 onPress={() => setActiveVideoUrl(mes.media?.[0].url!)}
                                                                 onLongPress={() => messageIdTemporaryStorageReadyForOperations(mes)}
+                                                                play={togglePlay}
+                                                                rewind={rewind}
+                                                                forward={forward}
+                                                                currentTime={videoCurrentTime}
+                                                                duration={videoDuration}
                                                             />
                                                     })}
                                                 </View>
@@ -676,6 +887,11 @@ export default function Chat() {
                                                                 isActive={mes.media?.[0].url === activeVideoUrl}
                                                                 onPress={() => setActiveVideoUrl(mes.media?.[0].url!)}
                                                                 onLongPress={() => messageIdTemporaryStorageReadyForOperations(mes)}
+                                                                play={togglePlay}
+                                                                rewind={rewind}
+                                                                forward={forward}
+                                                                currentTime={videoCurrentTime}
+                                                                duration={videoDuration}
                                                             />
                                                     })}
                                                 </View>
@@ -747,6 +963,11 @@ export default function Chat() {
                                                         isActive={mes.media?.[0].url === activeVideoUrl}
                                                         onPress={() => setActiveVideoUrl(mes.media?.[0].url!)}
                                                         onLongPress={() => null}
+                                                        play={togglePlay}
+                                                        rewind={rewind}
+                                                        forward={forward}
+                                                        currentTime={videoCurrentTime}
+                                                        duration={videoDuration}
                                                     />
                                                 </View>
                                             </View>
@@ -781,6 +1002,11 @@ export default function Chat() {
                                                                 isActive={m.url === activeVideoUrl}
                                                                 onPress={() => setActiveVideoUrl(m.url!)}
                                                                 onLongPress={() => null}
+                                                                play={togglePlay}
+                                                                rewind={rewind}
+                                                                forward={forward}
+                                                                currentTime={videoCurrentTime}
+                                                                duration={videoDuration}
                                                             />
                                                     })}
                                                 </View>
@@ -811,6 +1037,11 @@ export default function Chat() {
                                                                 isActive={m.url === activeVideoUrl}
                                                                 onPress={() => setActiveVideoUrl(m.url!)}
                                                                 onLongPress={() => null}
+                                                                play={togglePlay}
+                                                                rewind={rewind}
+                                                                forward={forward}
+                                                                currentTime={videoCurrentTime}
+                                                                duration={videoDuration}
                                                             />
                                                     })}
                                                 </View>
@@ -846,6 +1077,11 @@ export default function Chat() {
                                                                 isActive={m.url === activeVideoUrl}
                                                                 onPress={() => setActiveVideoUrl(m.url)}
                                                                 onLongPress={() => null}
+                                                                play={togglePlay}
+                                                                rewind={rewind}
+                                                                forward={forward}
+                                                                currentTime={videoCurrentTime}
+                                                                duration={videoDuration}
                                                             />
                                                     })}
                                                 </View>
