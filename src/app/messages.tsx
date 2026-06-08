@@ -1,5 +1,5 @@
-import { COLORS } from "@/constants/themeMyVersion";
 import { useUser } from "@/context/UserContext";
+import { useTheme } from "@/hooks/use-theme";
 import { supabase } from "@/lib/supabase";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -10,6 +10,10 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { ConversationList, getDirectConversation, getGroupConversation } from "./api/supabase_queries";
 
 export default function Messages() {
+
+    const COLORS = useTheme();
+
+    console.log(COLORS);
 
     const user = useUser();
 

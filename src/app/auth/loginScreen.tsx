@@ -1,4 +1,4 @@
-import { COLORS } from '@/constants/themeMyVersion';
+import { useTheme } from '@/hooks/use-theme';
 import { Ionicons } from '@expo/vector-icons';
 import * as WebBrowser from 'expo-web-browser';
 import { Pressable, Text, View } from 'react-native';
@@ -43,6 +43,8 @@ async function handleGoogleSignIn() {
 }
 
 export default function LoginScreen() {
+
+    const COLORS = useTheme();
 
     return (
         <SafeAreaView style={{ padding: 32, backgroundColor: COLORS.background, flex: 1, alignItems: 'center' }}>

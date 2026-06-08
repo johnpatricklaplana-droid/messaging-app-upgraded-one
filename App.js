@@ -1,3 +1,4 @@
+import { useTheme } from '@/hooks/use-theme';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -12,7 +13,6 @@ import CreateGroupChat from './src/app/createGroupChat';
 import Messages from './src/app/messages';
 import People from './src/app/people';
 import Profile from './src/app/profile';
-import { COLORS } from './src/constants/themeMyVersion';
 import { UserProvider } from './src/context/UserContext';
 import { supabase } from './src/lib/supabase';
 
@@ -81,6 +81,9 @@ export async function uploadMedia(result, conversationId, myId) {
 const Tab = createBottomTabNavigator();
 
 function TabGroup () {
+
+    const COLORS = useTheme();
+
     return (
         <Tab.Navigator screenOptions={{ 
                 sceneStyle: {
@@ -133,6 +136,8 @@ function TabGroup () {
 const RootStack = createStackNavigator();
 
 export default function TabLayout() {
+
+    const COLORS = useTheme();
 
     const [session, setSession] = useState(null);
     const [loading, setLoading] = useState(true);

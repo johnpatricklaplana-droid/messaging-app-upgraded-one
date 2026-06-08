@@ -1,5 +1,5 @@
-import { COLORS } from "@/constants/themeMyVersion";
 import { useUser } from "@/context/UserContext";
+import { useTheme } from "@/hooks/use-theme";
 import { supabase } from "@/lib/supabase";
 import * as Crypto from 'expo-crypto';
 import * as ImagePicker from 'expo-image-picker';
@@ -10,6 +10,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { getRelatedPeople } from "./api/supabase_queries";
 
 export default function CreateGroupChat () {
+
+    const COLORS = useTheme();
 
     const user = useUser();
 

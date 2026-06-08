@@ -1,5 +1,5 @@
-import { COLORS } from "@/constants/themeMyVersion";
 import { UserContext } from '@/context/UserContext';
+import { useTheme } from '@/hooks/use-theme';
 import { BellIcon, ChevronRight, CircleQuestionMark, Lock, LogOut, MessageCircleHeartIcon, MoonIcon, MoreHorizontal, Phone, Video } from 'lucide-react-native';
 import { ReactNode, useContext } from "react";
 import { Image, Pressable, ScrollView, Text, View } from "react-native";
@@ -7,6 +7,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Logout } from "./auth/logout";
 
 export default function Profile() {
+
+    const COLORS = useTheme();
 
     const { user, loading } = useContext(UserContext);
 

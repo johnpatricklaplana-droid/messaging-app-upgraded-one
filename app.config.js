@@ -6,7 +6,7 @@ export default {
     slug: "messaging-app-last-one",
     version: "1.0.0",
     orientation: "portrait",
-    icon: "./assets/images/icon.png",
+    icon: "./assets/images/heydaddy_logo.png",
     scheme: "messagingapplastone",
     userInterfaceStyle: "automatic",
     ios: {

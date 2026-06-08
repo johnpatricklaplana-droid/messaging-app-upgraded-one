@@ -1,5 +1,5 @@
-import { COLORS } from "@/constants/themeMyVersion";
 import { useUser } from "@/context/UserContext";
+import { useTheme } from "@/hooks/use-theme";
 import { supabase } from "@/lib/supabase";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -10,6 +10,8 @@ import { Timestamp } from "react-native-reanimated/lib/typescript/commonTypes";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function People () {
+
+    const COLORS = useTheme();
 
     const user = useUser();
 

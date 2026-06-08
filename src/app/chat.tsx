@@ -1,5 +1,5 @@
-import { COLORS } from "@/constants/themeMyVersion";
 import { useUser } from "@/context/UserContext";
+import { useTheme } from "@/hooks/use-theme";
 import { supabase } from "@/lib/supabase";
 import Slider from '@react-native-community/slider';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -13,19 +13,17 @@ import {
     ExpandIcon,
     Forward,
     ImageIcon,
-    MoreVertical,
-    Phone,
     PlayCircle,
     RotateCcw,
     RotateCw,
     SendHorizontalIcon,
     Trash2,
-    VideoIcon,
     Volume2Icon,
     X
 } from "lucide-react-native";
 import { ReactNode, useEffect, useRef, useState } from "react";
 import { Animated, DimensionValue, Image, Keyboard, KeyboardEvent, Pressable, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { FlatList } from "react-native-gesture-handler";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { uploadMedia } from '../../App.js';
 import { formatMessageTime } from "./helper.tsx/formatDate";
@@ -56,6 +54,8 @@ function VideoMessage({
         currentTime: number,
         duration: number
     }>) {
+
+    const COLORS = useTheme();
 
     const videoRef = useRef<VideoView>(null);
 
@@ -104,6 +104,7 @@ function VideoMessage({
     }
 
     return (
+
         <View
             style={{ width: width, height: height, position: 'relative' }}
         >
@@ -235,6 +236,8 @@ function VideoMessage({
 
 export default function Chat() {
 
+    const COLORS = useTheme(); 
+
     const user = useUser();
 
     const myId = user.user?.id;
@@ -287,12 +290,14 @@ export default function Chat() {
 
     interface Message {
         sentAt: string;
-        messageId: string,
-        sender_id: string,
-        text_message: string,
-        me: boolean,
-        type: string,
-        media: MessageMedia[] | null
+        messageId: string;
+        sender_id: string;
+        text_message: string;
+        me: boolean;
+        type: string;
+        media: MessageMedia[] | null;
+        senderProfilePic: string;
+        senderName: string;
     };
 
     interface MessageMedia {
@@ -321,6 +326,7 @@ export default function Chat() {
     const [isPlaying, setIsPlaying] = useState(true);
     const [videoCurrentTime, setVideoCurrentTime] = useState<number>(0);
     const [videoDuration, setVideoDuration] = useState<number>(0);
+    const [currentOldersMessage, setCurrentOldestMessage] = useState<string | null>(null);
 
     const player = useVideoPlayer(activeVideoUrl, player => {
         player.loop = false;
@@ -452,17 +458,62 @@ export default function Chat() {
         
     }, [conversationIdFromMessages]);
 
+    const getOlderMessages = async () => {
+
+        if(!currentOldersMessage) return;
+
+        const { data, error } = await supabase
+            .from('messages')
+            .select('*, message_media(*), profiles(*)')
+            .eq('conversation_id', conversationId)
+            .order('created_at', { ascending: false })
+            .lt('created_at', currentOldersMessage)
+            .limit(10);
+
+        setCurrentOldestMessage(data?.[data.length - 1].created_at);
+
+        const oldies = (data?.map((mes: any) => {
+
+            let me = false;
+
+            if (mes.sender_id === myId) {
+                me = true;
+            }
+
+            return {
+                messageId: mes.id,
+                sender_id: mes.sender_id,
+                sentAt: formatMessageTime(mes.created_at),
+                text_message: mes.text_message,
+                me: me,
+                type: mes.message_type,
+                media: mes.message_media,
+                senderName: mes.profiles.full_name,
+                senderProfilePic: mes.profiles.avatar_url
+            }
+
+        }));
+
+        setMessages(prev => [...prev, ...oldies!]);
+        
+        console.log("why loading agad");
+        console.log(data);
+        console.log(error);
+    }
+
     const getMessages = async () => {
         const { data, error } = await supabase
             .from('messages')
-            .select('*, message_media(*)')
+            .select('*, message_media(*), profiles(*)')
             .eq('conversation_id', conversationId)
-            .order('created_at', { ascending: false });
+            .order('created_at', { ascending: false })
+            .limit(10);
 
+        console.log(data);
 
-        const sortedData = data?.reverse();
+        setCurrentOldestMessage(data?.[data.length - 1].created_at);
         
-        setMessages((sortedData?.map(mes => {
+        setMessages((data?.map((mes: any) => {
 
             let me = false;
 
@@ -477,7 +528,9 @@ export default function Chat() {
                 text_message: mes.text_message,
                 me: me,
                 type: mes.message_type,
-                media: mes.message_media
+                media: mes.message_media,
+                senderName: mes.profiles.full_name,
+                senderProfilePic: mes.profiles.avatar_url
             } 
 
         })) ?? []);
@@ -510,6 +563,375 @@ export default function Chat() {
         }
     }
 
+    const renderMessage = (mes: Message) => {
+            if (mes.me) {
+                if (mes.type === 'media' && mes.media) {
+                    if (mes.media.length === 1) {
+                        if (mes.media?.[0].type === 'image') {
+                            return <View style={{ width: '100%' }}
+                                key={mes.messageId}
+                            >
+                                <View style={{ width: '100%', flexDirection: 'column', alignItems: 'flex-end' }}>
+                                    <Pressable
+                                        style={{ width: '70%' }}
+                                        onLongPress={() => messageIdTemporaryStorageReadyForOperations(mes)}
+                                    >
+                                        <Image onLoad={() => ScrollViewRef.current?.scrollToEnd({ animated: false })} style={{ width: '100%', borderRadius: 16, marginBlock: 8 }} height={300} source={{ uri: mes.media?.[0].url }}></Image>
+                                    </Pressable>
+                                    <Text style={{ color: COLORS.textPrimary, fontSize: 12, marginBottom: 8 }}>{mes.sentAt}</Text>
+                                </View>
+                            </View>
+                        } else if (mes.media?.[0].type === 'video') {
+                            return <View style={{ width: '100%' }}
+                                key={mes.messageId}
+                            >
+                                <View style={{ width: '100%', flexDirection: 'column', alignItems: 'flex-end' }}>
+                                    <View style={{ width: '70%' }}>
+                                        <VideoMessage
+                                            width={'100%'}
+                                            height={300}
+                                            player={player}
+                                            isActive={mes.media?.[0].url === activeVideoUrl}
+                                            onPress={() => setActiveVideoUrl(mes.media?.[0].url!)}
+                                            onLongPress={() => messageIdTemporaryStorageReadyForOperations(mes)}
+                                            play={togglePlay}
+                                            rewind={rewind}
+                                            forward={forward}
+                                            currentTime={videoCurrentTime}
+                                            duration={videoDuration}
+                                        />
+                                    </View>
+                                    <Text style={{ color: COLORS.textPrimary, fontSize: 12, marginBottom: 8 }}>{mes.sentAt}</Text>
+                                </View>
+                            </View>
+                        }
+                    } else if (mes.media.length === 2) {
+                        return <View style={{ width: '100%' }}
+                            key={mes.messageId}
+                        >
+                            <View style={{ width: '100%', flexDirection: 'column', alignItems: 'flex-end' }}>
+                                <View style={{ width: '70%', flexDirection: 'row', gap: 4 }}>
+                                    {mes.media.map(m => {
+                                        return m.type === "image"
+                                            ? <Pressable
+                                                onLongPress={() => messageIdTemporaryStorageReadyForOperations(mes)}
+                                            >
+                                                <Image
+                                                    style={{
+                                                        width: '50%',
+                                                        borderRadius: 16,
+                                                        marginBlock: 8
+                                                    }}
+                                                    height={120}
+                                                    source={{ uri: m.url }}
+                                               >
+                        
+                                                </Image>
+                                            </Pressable>
+                                            :
+                                            <VideoMessage
+                                                player={player}
+                                                width={'50%'}
+                                                height={120}
+                                                isActive={mes.media?.[0].url === activeVideoUrl}
+                                                onPress={() => setActiveVideoUrl(mes.media?.[0].url!)}
+                                                onLongPress={() => messageIdTemporaryStorageReadyForOperations(mes)}
+                                                play={togglePlay}
+                                                rewind={rewind}
+                                                forward={forward}
+                                                currentTime={videoCurrentTime}
+                                                duration={videoDuration}
+                                            />
+                                    })}
+                                </View>
+                                <Text style={{ color: COLORS.textPrimary, fontSize: 12, marginBottom: 8 }}>{mes.sentAt}</Text>
+                            </View>
+                        </View>
+                    } else if (mes.media.length === 3) {
+                        return <View style={{ width: '100%' }}
+                            key={mes.messageId}
+                        >
+                            <View style={{ width: '100%', flexDirection: 'column', alignItems: 'flex-end' }}>
+                                <View style={{ width: '90%', flexDirection: 'row', gap: 4 }}>
+                                    {mes.media.map(m => {
+                                        return m.type === "image"
+                                            ? <Pressable
+                                                onLongPress={() => messageIdTemporaryStorageReadyForOperations(mes)}
+                                            >
+                                                <Image style={{ width: '33%', borderRadius: 16, marginBlock: 8 }} height={92} source={{ uri: m.url }}></Image>
+                                            </Pressable>
+                                            :
+                                            <VideoMessage
+                                                player={player}
+                                                width={'33%'}
+                                                height={92}
+                                                isActive={mes.media?.[0].url === activeVideoUrl}
+                                                onPress={() => setActiveVideoUrl(mes.media?.[0].url!)}
+                                                onLongPress={() => messageIdTemporaryStorageReadyForOperations(mes)}
+                                                play={togglePlay}
+                                                rewind={rewind}
+                                                forward={forward}
+                                                currentTime={videoCurrentTime}
+                                                duration={videoDuration}
+                                            />
+                                    })}
+                                </View>
+                                <Text style={{ color: COLORS.textPrimary, fontSize: 12, marginBottom: 8 }}>{mes.sentAt}</Text>
+                            </View>
+                        </View>
+                    } else if (mes.media.length === 4) {
+                        return <View style={{ width: '100%' }}
+                            key={mes.messageId}
+                        >
+                            <View style={{ width: '100%', flexDirection: 'column', alignItems: 'flex-end' }}>
+                                <View style={{ width: '70%', flexDirection: 'row', gap: 4, flexWrap: 'wrap' }}>
+                                    {mes.media.map(m => {
+                                        return m.type === "image"
+                                            ? <Pressable
+                                                onLongPress={() => messageIdTemporaryStorageReadyForOperations(mes)}
+                                            >
+                                                <Image style={{ width: '49%', borderRadius: 16 }} height={92} source={{ uri: m.url }}></Image>
+                                            </Pressable>
+                                            :
+                                            <VideoMessage
+                                                player={player}
+                                                width={'49%'}
+                                                height={92}
+                                                isActive={mes.media?.[0].url === activeVideoUrl}
+                                                onPress={() => setActiveVideoUrl(mes.media?.[0].url!)}
+                                                onLongPress={() => messageIdTemporaryStorageReadyForOperations(mes)}
+                                                play={togglePlay}
+                                                rewind={rewind}
+                                                forward={forward}
+                                                currentTime={videoCurrentTime}
+                                                duration={videoDuration}
+                                            />
+                                    })}
+                                </View>
+                                <Text style={{ color: COLORS.textPrimary, fontSize: 12, marginBottom: 8 }}>{mes.sentAt}</Text>
+                            </View>
+                        </View>
+                    }
+                }
+                return (
+                    <View
+                        style={{ marginTop: 8, marginBottom: 8, gap: 8, flexDirection: 'row', alignItems: 'flex-end', maxWidth: '80%', alignSelf: 'flex-end' }}
+                        key={mes.messageId}
+                    >
+                        <View>
+                            <Pressable
+                                onLongPress={() => messageIdTemporaryStorageReadyForOperations(mes)}
+                                delayLongPress={200}
+                                style={({ pressed }) => ({
+                                    borderBottomRightRadius: 5,
+                                    padding: 16, borderRadius: 16,
+                                    backgroundColor: pressed ? COLORS.primaryLight : COLORS.primary,
+                                    transform: [{ scale: pressed ? 0.95 : 1 }]
+                                })}><Text style={{ color: COLORS.textPrimary }}>{mes.text_message}</Text>
+                            </Pressable>
+                            <Text style={{ color: COLORS.textPrimary, fontWeight: 700, fontSize: 12, textAlign: 'right' }}>{mes.sentAt}</Text>
+                        </View>
+                    </View>
+                );
+            } else {
+                if (mes.type === 'media' && mes.media) {
+                    if (mes.media.length === 1) {
+                        if (mes.media?.[0].type === 'image') {
+                            return <View
+                                style={{ marginTop: 8, marginBottom: 8, gap: 8, flexDirection: 'row', alignItems: 'flex-end', maxWidth: '70%' }}
+                                key={mes.messageId}
+                            >
+                                <Image
+                                    source={{ uri: kaChatProfile?.avatarUrl }}
+                                    width={32}
+                                    height={32}
+                                    style={{ borderRadius: 50 }}
+                                ></Image>
+                                <View style={{ width: '100%' }}>
+                                    <Pressable style={({ pressed }) => ({
+                                        borderRadius: 16,
+                                        width: '100%'
+                                    })}>
+                                        <Image style={{ width: '100%', borderRadius: 16, marginBlock: 8 }} height={300} source={{ uri: mes.media?.[0].url }}></Image>
+                                    </Pressable>
+                                    <Text style={{ color: COLORS.textPrimary, fontWeight: 700, fontSize: 12 }}>{mes.sentAt}</Text>
+                                </View>
+                            </View>
+                        } else if (mes.media?.[0].type === 'video') {
+                            return <View
+                                style={{ marginTop: 8, marginBottom: 8, gap: 8, flexDirection: 'row', alignItems: 'flex-end', maxWidth: '70%' }}
+                                key={mes.messageId}
+                            >
+                                <Image
+                                    source={{ uri: kaChatProfile?.avatarUrl }}
+                                    width={32}
+                                    height={32}
+                                    style={{ borderRadius: 50 }}
+                                ></Image>
+                                <View style={{ width: '100%' }}>
+                                    <VideoMessage
+                                        player={player}
+                                        width={'100%'}
+                                        height={300}
+                                        isActive={mes.media?.[0].url === activeVideoUrl}
+                                        onPress={() => setActiveVideoUrl(mes.media?.[0].url!)}
+                                        onLongPress={() => null}
+                                        play={togglePlay}
+                                        rewind={rewind}
+                                        forward={forward}
+                                        currentTime={videoCurrentTime}
+                                        duration={videoDuration}
+                                    />
+                                </View>
+                            </View>
+                        }
+                    } else if (mes.media.length === 2) {
+                        return <View
+                            style={{ marginTop: 8, marginBottom: 8, gap: 8, flexDirection: 'row', alignItems: 'flex-end', maxWidth: '70%' }}
+                            key={mes.messageId}
+                        >
+                            <Image
+                                source={{ uri: kaChatProfile?.avatarUrl }}
+                                width={32}
+                                height={32}
+                                style={{ borderRadius: 50 }}
+                            ></Image>
+                            <View style={{ width: '100%' }}>
+                                <View style={{
+                                    borderBottomLeftRadius: 5,
+                                    borderRadius: 16,
+                                    gap: 4,
+                                    width: '100%',
+                                    flexDirection: 'row'
+                                }}>
+                                    {mes.media.map(m => {
+                                        return m.type === "image"
+                                            ? <Image style={{ width: '50%', borderRadius: 16, marginBlock: 8 }} height={120} source={{ uri: m.url }}></Image>
+                                            :
+                                            <VideoMessage
+                                                player={player}
+                                                width={'50%'}
+                                                height={120}
+                                                isActive={m.url === activeVideoUrl}
+                                                onPress={() => setActiveVideoUrl(m.url!)}
+                                                onLongPress={() => null}
+                                                play={togglePlay}
+                                                rewind={rewind}
+                                                forward={forward}
+                                                currentTime={videoCurrentTime}
+                                                duration={videoDuration}
+                                            />
+                                    })}
+                                </View>
+                                <Text style={{ color: COLORS.textPrimary, fontWeight: 700, fontSize: 12 }}>{mes.sentAt}</Text>
+                            </View>
+                        </View>
+                    } else if (mes.media.length === 3) {
+                        return <View
+                            style={{ marginTop: 8, marginBottom: 8, gap: 8, flexDirection: 'row', alignItems: 'flex-start', maxWidth: '80%' }}
+                            key={mes.messageId}
+                        >
+                            <Image
+                                source={{ uri: kaChatProfile?.avatarUrl }}
+                                width={32}
+                                height={32}
+                                style={{ borderRadius: 50 }}
+                            ></Image>
+                        <View>
+                                <View style={{ width: '100%', flexDirection: 'row', gap: 4 }}>
+                                    {mes.media.map(m => {
+                                        return m.type === "image"
+                                            ? <Image style={{ width: '33%', borderRadius: 16, marginBlock: 8 }} height={92} source={{ uri: m.url }}></Image>
+                                            :
+                                            <VideoMessage
+                                                player={player}
+                                                width={'33%'}
+                                                height={92}
+                                                isActive={m.url === activeVideoUrl}
+                                                onPress={() => setActiveVideoUrl(m.url!)}
+                                                onLongPress={() => null}
+                                                play={togglePlay}
+                                                rewind={rewind}
+                                                forward={forward}
+                                                currentTime={videoCurrentTime}
+                                                duration={videoDuration}
+                                            />
+                                    })}
+                                </View>
+                                <Text style={{ color: COLORS.textPrimary, fontWeight: 700, fontSize: 12 }}>{mes.sentAt}</Text>
+                            </View>
+                        </View>
+                    } else if (mes.media.length === 4) {
+                        return <View
+                            style={{ marginTop: 8, marginBottom: 8, gap: 8, flexDirection: 'row', alignItems: 'flex-end', maxWidth: '80%' }}
+                            key={mes.messageId}
+                        >
+                            <Image
+                                source={{ uri: kaChatProfile?.avatarUrl }}
+                                width={32}
+                                height={32}
+                                style={{ borderRadius: 50 }}
+                            ></Image>
+                            <View style={{ width: '100%' }}>
+                                <View style={{
+                                    width: '100%',
+                                    flexDirection: 'row',
+                                    flexWrap: 'wrap',
+                                    gap: 4
+                                }}>
+                                    {mes.media.map(m => {
+                                        return m.type === "image"
+                                            ? <Image style={{ width: '49%', borderRadius: 16 }} height={92} source={{ uri: m.url }}></Image>
+                                            :
+                                            <VideoMessage
+                                                player={player}
+                                                width={'49%'}
+                                                height={92}
+                                                isActive={m.url === activeVideoUrl}
+                                                onPress={() => setActiveVideoUrl(m.url)}
+                                                onLongPress={() => null}
+                                                play={togglePlay}
+                                                rewind={rewind}
+                                                forward={forward}
+                                                currentTime={videoCurrentTime}
+                                                duration={videoDuration}
+                                            />
+                                    })}
+                                </View>
+                                <Text style={{ color: COLORS.textPrimary, fontWeight: 700, fontSize: 12 }}>{mes.sentAt}</Text>
+                            </View>
+                        </View>
+                    }
+                }
+
+                return (
+                    <View
+                        style={{ marginTop: 8, marginBottom: 8, gap: 8, flexDirection: 'row', alignItems: 'flex-end', maxWidth: '80%' }}
+                        key={mes.messageId}
+                    >
+                    <Image
+                        source={{ uri: mes.senderProfilePic }}
+                        width={32}
+                        height={32}
+                        style={{ borderRadius: 50 }}
+                    ></Image>
+                    <View>
+                        <Pressable style={({ pressed }) => ({
+                            borderBottomLeftRadius: 5,
+                            padding: 16,
+                            borderRadius: 16,
+                            backgroundColor: pressed ? 'rgba(0,0,0,0.1)' : COLORS.primaryTint,
+                            transform: [{ scale: pressed ? 0.9 : 1 }]
+                        })}>
+                            <Text style={{ color: COLORS.textPrimary }}>{mes.text_message}</Text>
+                        </Pressable>
+                        <Text style={{ color: COLORS.textPrimary, fontWeight: 700, fontSize: 12 }}>{mes.sentAt}</Text>
+                    </View>
+                </View>
+            );
+        } 
+    }
+
     // REAL TIME CHECK
     useEffect(() => {
         if(!conversationId) return;
@@ -522,25 +944,34 @@ export default function Chat() {
                 table: 'messages',
                 filter: `conversation_id=eq.${conversationId}`
             },
-            async (payload) => {
+            async (payload: any) => {
                 if(payload.eventType === "INSERT") {
+
+                    if (!payload.new.text_message) return;
+                    
+                    const { data, error } = await supabase
+                        .from('messages')
+                        .select('*, message_media(*), profiles(*)')
+                        .eq('conversation_id', conversationId)
+                        .eq('id', payload.new.id)
+                        .single();
+
                     let me = false;
-                    if (payload.new.sender_id === myId) {
+                    if (data?.sender_id === myId) {
                         me = true;
                     }
-                    console.log("text message?");
-                    console.log(payload.new.text_message);
-                    if(!payload.new.text_message) return;
 
-                    setMessages(prev => [...prev, {
-                        messageId: payload.new.id,
-                        sender_id: payload.new.sender_id,
-                        sentAt: formatMessageTime(payload.new.created_at),
-                        text_message: payload.new.text_message,
+                    setMessages(prev => [{
+                        messageId: data?.id,
+                        sender_id: data?.sender_id,
+                        sentAt: formatMessageTime(data.created_at),
+                        text_message: data?.text_message,
                         me: me,
-                        type: payload.new.type,
-                        media: null
-                    }]);
+                        type: data?.type,
+                        media: null,
+                        senderName: data?.profiles.full_name,
+                        senderProfilePic: data?.profiles.avatar_url
+                    }, ...prev]);
                 } else if(payload.eventType === "UPDATE") {
                     const messageId = payload.new.id;
                     const newTextMessage = payload.new.text_message;
@@ -566,7 +997,7 @@ export default function Chat() {
                 schema: 'public',
                 table: 'message_media'
             },
-             async (payload) => {
+             async (payload: any) => {
                 const { data, error } = await supabase
                     .from('messages')
                     .select('*, message_media(*)')
@@ -593,7 +1024,9 @@ export default function Chat() {
                      text_message: data.text_message,
                      me: me,
                      type: data.message_type,
-                     media: data.message_media
+                     media: data.message_media,
+                     senderName: data.profiles.full_name,
+                     senderProfilePic: data.profiles.avatar_url
                  }]
                 });
 
@@ -712,8 +1145,18 @@ export default function Chat() {
                 <Animated.View
                     style={{ flex: 1, paddingBottom: keyboardHeight }}
                 >
-                    <View style={{ paddingHorizontal: 16, paddingVertical: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 1, borderBottomColor: COLORS.divider }}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <View style={{ 
+                        paddingHorizontal: 16, 
+                        paddingVertical: 8, 
+                        flexDirection: 'row', 
+                        alignItems: 'center', 
+                        justifyContent: 'space-between', 
+                        borderBottomWidth: 1, 
+                        borderBottomColor: COLORS.divider,
+                        overflow: 'hidden',
+                        }}
+                    >
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
                             <Pressable onPress={() => navigation.goBack()}><ArrowLeft color={COLORS.primary}></ArrowLeft></Pressable>
                             <Image
                                 source={{ uri: kaChatProfile?.avatarUrl }}
@@ -721,370 +1164,41 @@ export default function Chat() {
                                 width={50}
                                 style={{ borderRadius: 50, borderColor: COLORS.tabBorder, borderWidth: 1 }}
                             />
-                            <View>
-                                <Text style={{ lineHeight: 20, fontWeight: 700, color: COLORS.textPrimary, fontSize: 22 }}>{kaChatProfile?.name}</Text>
-                            </View>
-                        </View>
-                        <View style={{ flexDirection: 'row', gap: 8 }}>
-                            <Pressable><Phone color={COLORS.textSecondary}></Phone></Pressable>
-                            <Pressable><VideoIcon color={COLORS.textSecondary}></VideoIcon></Pressable>
-                            <Pressable><MoreVertical color={COLORS.textSecondary}></MoreVertical></Pressable>
+                            <TouchableOpacity 
+                                style={{ flex: 1 }}
+                                activeOpacity={0.5}
+                            >
+                                <Text 
+                                    numberOfLines={1}
+                                    style={{ 
+                                        lineHeight: 20, 
+                                        fontWeight: 700, 
+                                        color: COLORS.textPrimary, 
+                                        fontSize: 22,
+                                        width: '100%',
+                                    }}>
+                                        {kaChatProfile?.name}
+                                    </Text>
+                            </TouchableOpacity>
                         </View>
                     </View>
-                    <ScrollView
-                        ref={ScrollViewRef}
-                        onContentSizeChange={() => 
-                            ScrollViewRef.current?.scrollToEnd({ animated: false })
-                        }
-                        onLayout={() => 
-                            ScrollViewRef.current?.scrollToEnd({ animated: false })
-                        }
+                    <FlatList
+                        data={messages}
+                        keyExtractor={(item) => item.messageId}
                         contentContainerStyle={{ paddingHorizontal: 22 }}
+                        inverted
+                        onEndReached={() => getOlderMessages()}
+                        onEndReachedThreshold={0.3}
+                        maintainVisibleContentPosition={{ minIndexForVisible: 0 }}
+                        showsVerticalScrollIndicator={false}
+                        ListEmptyComponent={
+                            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                                <Text style={{ color: COLORS.textMuted }}>No messages yet</Text>
+                            </View>
+                        }
+                        renderItem={({ item }) => renderMessage(item)}
                     >
-                    {messages.map((mes) => {
-                            if (mes.me) {
-                                if(mes.type === 'media' && mes.media) {
-                                    if (mes.media.length === 1) {
-                                        if(mes.media?.[0].type === 'image') {
-                                            return <View style={{ width: '100%' }}
-                                                key={mes.messageId}
-                                            >
-                                                <View style={{ width: '100%', flexDirection: 'column', alignItems: 'flex-end' }}>
-                                                    <Pressable style={{ width: '70%' }}>
-                                                        <Image onLoad={() => ScrollViewRef.current?.scrollToEnd({ animated: false })} style={{ width: '100%', borderRadius: 16, marginBlock: 8 }} height={300} source={{ uri: mes.media?.[0].url }}></Image>
-                                                    </Pressable>
-                                                    <Text style={{ color: COLORS.textPrimary, fontSize: 12, marginBottom: 8 }}>{mes.sentAt}</Text>
-                                                </View>
-                                            </View>
-                                        } else if(mes.media?.[0].type === 'video') {
-                                            return <View style={{ width: '100%' }}
-                                                key={mes.messageId}
-                                            >
-                                                <View style={{ width: '100%', flexDirection: 'column', alignItems: 'flex-end' }}>
-                                                    <View style={{ width: '70%' }}>
-                                                        <VideoMessage 
-                                                            width={'100%'} 
-                                                            height={300} 
-                                                            player={player}
-                                                            isActive={mes.media?.[0].url === activeVideoUrl} 
-                                                            onPress={() => setActiveVideoUrl(mes.media?.[0].url!)}
-                                                            onLongPress={() => messageIdTemporaryStorageReadyForOperations(mes)}
-                                                            play={togglePlay}
-                                                            rewind={rewind}
-                                                            forward={forward}
-                                                            currentTime={videoCurrentTime}
-                                                            duration={videoDuration}
-                                                        />
-                                                    </View>
-                                                    <Text style={{ color: COLORS.textPrimary, fontSize: 12, marginBottom: 8 }}>{mes.sentAt}</Text>
-                                                </View>
-                                            </View>
-                                        } 
-                                    } else if (mes.media.length === 2) {
-                                        return <View style={{ width: '100%' }}
-                                            key={mes.messageId}
-                                        >
-                                            <View style={{ width: '100%', flexDirection: 'column', alignItems: 'flex-end' }}>
-                                                <View style={{ width: '70%', flexDirection: 'row', gap: 4 }}>
-                                                    {mes.media.map(m => {
-                                                        return m.type === "image" 
-                                                            ? <Image style={{ width: '50%', borderRadius: 16, marginBlock: 8 }} height={120} source={{ uri: m.url }}></Image>
-                                                            : 
-                                                            <VideoMessage 
-                                                                player={player} 
-                                                                width={'50%'} 
-                                                                height={120} 
-                                                                isActive={mes.media?.[0].url === activeVideoUrl}
-                                                                onPress={() => setActiveVideoUrl(mes.media?.[0].url!)}
-                                                                onLongPress={() => messageIdTemporaryStorageReadyForOperations(mes)}
-                                                                play={togglePlay}
-                                                                rewind={rewind}
-                                                                forward={forward}
-                                                                currentTime={videoCurrentTime}
-                                                                duration={videoDuration}
-                                                            />
-                                                    })}
-                                                </View>
-                                                <Text style={{ color: COLORS.textPrimary, fontSize: 12, marginBottom: 8 }}>{mes.sentAt}</Text>
-                                            </View>
-                                        </View>   
-                                    } else if(mes.media.length === 3) {
-                                        return <View style={{ width: '100%' }}
-                                            key={mes.messageId}
-                                        >
-                                            <View style={{ width: '100%', flexDirection: 'column', alignItems: 'flex-end' }}>
-                                                <View style={{ width: '90%', flexDirection: 'row', gap: 4 }}>
-                                                    {mes.media.map(m => {
-                                                        return m.type === "image"
-                                                            ? <Image style={{ width: '33%', borderRadius: 16, marginBlock: 8 }} height={92} source={{ uri: m.url }}></Image>
-                                                            : 
-                                                            <VideoMessage 
-                                                                player={player} 
-                                                                width={'33%'} 
-                                                                height={92} 
-                                                                isActive={mes.media?.[0].url === activeVideoUrl}
-                                                                onPress={() => setActiveVideoUrl(mes.media?.[0].url!)}
-                                                                onLongPress={() => messageIdTemporaryStorageReadyForOperations(mes)}
-                                                                play={togglePlay}
-                                                                rewind={rewind}
-                                                                forward={forward}
-                                                                currentTime={videoCurrentTime}
-                                                                duration={videoDuration}
-                                                            />
-                                                    })}
-                                                </View>
-                                                <Text style={{ color: COLORS.textPrimary, fontSize: 12, marginBottom: 8 }}>{mes.sentAt}</Text>
-                                            </View>
-                                        </View>   
-                                    } else if(mes.media.length === 4) {
-                                        return <View style={{ width: '100%' }}
-                                            key={mes.messageId}
-                                        >
-                                            <View style={{ width: '100%', flexDirection: 'column', alignItems: 'flex-end' }}>
-                                                <View style={{ width: '70%', flexDirection: 'row', gap: 4, flexWrap: 'wrap' }}>
-                                                    {mes.media.map(m => {
-                                                        return m.type === "image"
-                                                            ? <Image style={{ width: '49%', borderRadius: 16 }} height={92} source={{ uri: m.url }}></Image>
-                                                            : 
-                                                            <VideoMessage 
-                                                                player={player} 
-                                                                width={'49%'} 
-                                                                height={92} 
-                                                                isActive={mes.media?.[0].url === activeVideoUrl}
-                                                                onPress={() => setActiveVideoUrl(mes.media?.[0].url!)}
-                                                                onLongPress={() => messageIdTemporaryStorageReadyForOperations(mes)}
-                                                                play={togglePlay}
-                                                                rewind={rewind}
-                                                                forward={forward}
-                                                                currentTime={videoCurrentTime}
-                                                                duration={videoDuration}
-                                                            />
-                                                    })}
-                                                </View>
-                                                <Text style={{ color: COLORS.textPrimary, fontSize: 12, marginBottom: 8 }}>{mes.sentAt}</Text>
-                                            </View>
-                                        </View>   
-                                    }
-                                }
-                                return (
-                                    <View
-                                        style={{ marginTop: 8, marginBottom: 8, gap: 8, flexDirection: 'row', alignItems: 'flex-end', maxWidth: '80%', alignSelf: 'flex-end' }}
-                                        key={mes.messageId}
-                                    >
-                                        <View>
-                                            <Pressable 
-                                                onLongPress={() => messageIdTemporaryStorageReadyForOperations(mes)}
-                                                delayLongPress={200}
-                                                style={({ pressed }) => ({
-                                                borderBottomRightRadius: 5, 
-                                                padding: 16, borderRadius: 16, 
-                                                backgroundColor: pressed ? COLORS.primaryLight : COLORS.primary, 
-                                                transform: [{ scale: pressed ? 0.95 : 1 }]
-                                            })}><Text style={{ color: COLORS.textPrimary }}>{mes.text_message}</Text>
-                                            </Pressable>
-                                            <Text style={{ color: COLORS.textPrimary, fontWeight: 700, fontSize: 12, textAlign: 'right' }}>{mes.sentAt}</Text>
-                                        </View>
-                                    </View>
-                                );
-                            } else {
-                                if(mes.type === 'media' && mes.media) {
-                                    if (mes.media.length === 1) {
-                                        if(mes.media?.[0].type === 'image') {
-                                            return <View
-                                                style={{ marginTop: 8, marginBottom: 8, gap: 8, flexDirection: 'row', alignItems: 'flex-end', maxWidth: '70%' }}
-                                                key={mes.messageId}
-                                            >
-                                                <Image
-                                                    source={{ uri: kaChatProfile?.avatarUrl }}
-                                                    width={32}
-                                                    height={32}
-                                                    style={{ borderRadius: 50 }}
-                                                ></Image>
-                                                <View style={{ width: '100%' }}>
-                                                    <Pressable style={({ pressed }) => ({
-                                                        borderRadius: 16,
-                                                        width: '100%'
-                                                    })}>
-                                                    <Image style={{ width: '100%', borderRadius: 16, marginBlock: 8 }} height={300} source={{ uri: mes.media?.[0].url }}></Image>
-                                                    </Pressable>
-                                                    <Text style={{ color: COLORS.textPrimary, fontWeight: 700, fontSize: 12 }}>{mes.sentAt}</Text>
-                                                </View>
-                                            </View>
-                                        } else if(mes.media?.[0].type === 'video') {
-                                            return <View
-                                                style={{ marginTop: 8, marginBottom: 8, gap: 8, flexDirection: 'row', alignItems: 'flex-end', maxWidth: '70%' }}
-                                                key={mes.messageId}
-                                            >
-                                                <Image
-                                                    source={{ uri: kaChatProfile?.avatarUrl }}
-                                                    width={32}
-                                                    height={32}
-                                                    style={{ borderRadius: 50 }}
-                                                ></Image>
-                                                <View style={{ width: '100%' }}>
-                                                    <VideoMessage 
-                                                        player={player} 
-                                                        width={'100%'} 
-                                                        height={300} 
-                                                        isActive={mes.media?.[0].url === activeVideoUrl}
-                                                        onPress={() => setActiveVideoUrl(mes.media?.[0].url!)}
-                                                        onLongPress={() => null}
-                                                        play={togglePlay}
-                                                        rewind={rewind}
-                                                        forward={forward}
-                                                        currentTime={videoCurrentTime}
-                                                        duration={videoDuration}
-                                                    />
-                                                </View>
-                                            </View>
-                                        } 
-                                    } else if (mes.media.length === 2) {
-                                        return <View
-                                            style={{ marginTop: 8, marginBottom: 8, gap: 8, flexDirection: 'row', alignItems: 'flex-end', maxWidth: '70%' }}
-                                            key={mes.messageId}
-                                        >
-                                            <Image
-                                                source={{ uri: kaChatProfile?.avatarUrl }}
-                                                width={32}
-                                                height={32}
-                                                style={{ borderRadius: 50 }}
-                                            ></Image>
-                                            <View style={{ width: '100%' }}>
-                                                <View style={{
-                                                    borderBottomLeftRadius: 5,
-                                                    borderRadius: 16,
-                                                    gap: 4,
-                                                    width: '100%',
-                                                    flexDirection: 'row'
-                                                }}>
-                                                    {mes.media.map(m => {
-                                                        return m.type === "image"
-                                                            ? <Image style={{ width: '50%', borderRadius: 16, marginBlock: 8 }} height={120} source={{ uri: m.url }}></Image>
-                                                            :
-                                                            <VideoMessage 
-                                                                player={player} 
-                                                                width={'50%'} 
-                                                                height={120} 
-                                                                isActive={m.url === activeVideoUrl}
-                                                                onPress={() => setActiveVideoUrl(m.url!)}
-                                                                onLongPress={() => null}
-                                                                play={togglePlay}
-                                                                rewind={rewind}
-                                                                forward={forward}
-                                                                currentTime={videoCurrentTime}
-                                                                duration={videoDuration}
-                                                            />
-                                                    })}
-                                                </View>
-                                                <Text style={{ color: COLORS.textPrimary, fontWeight: 700, fontSize: 12 }}>{mes.sentAt}</Text>
-                                            </View>
-                                        </View>
-                                    } else if(mes.media.length === 3) {
-                                        return <View
-                                            style={{ marginTop: 8, marginBottom: 8, gap: 8, flexDirection: 'row', alignItems: 'flex-start', maxWidth: '80%' }}
-                                            key={mes.messageId}
-                                        >
-                                            <Image
-                                                source={{ uri: kaChatProfile?.avatarUrl }}
-                                                width={32}
-                                                height={32}
-                                                style={{ borderRadius: 50 }}
-                                            ></Image>
-                                            <View>
-                                                <View style={{ width: '100%', flexDirection: 'row', gap: 4 }}> 
-                                                    {mes.media.map(m => {
-                                                        return m.type === "image"
-                                                            ? <Image style={{ width: '33%', borderRadius: 16, marginBlock: 8 }} height={92} source={{ uri: m.url }}></Image>
-                                                            : 
-                                                            <VideoMessage 
-                                                                player={player} 
-                                                                width={'33%'} 
-                                                                height={92} 
-                                                                isActive={m.url === activeVideoUrl}
-                                                                onPress={() => setActiveVideoUrl(m.url!)}
-                                                                onLongPress={() => null}
-                                                                play={togglePlay}
-                                                                rewind={rewind}
-                                                                forward={forward}
-                                                                currentTime={videoCurrentTime}
-                                                                duration={videoDuration}
-                                                            />
-                                                    })}
-                                                </View>
-                                                <Text style={{ color: COLORS.textPrimary, fontWeight: 700, fontSize: 12 }}>{mes.sentAt}</Text>
-                                            </View>
-                                        </View>
-                                    } else if(mes.media.length === 4) {
-                                        return <View
-                                            style={{ marginTop: 8, marginBottom: 8, gap: 8, flexDirection: 'row', alignItems: 'flex-end', maxWidth: '80%' }}
-                                            key={mes.messageId}
-                                        >
-                                            <Image
-                                                source={{ uri: kaChatProfile?.avatarUrl }}
-                                                width={32}
-                                                height={32}
-                                                style={{ borderRadius: 50 }}
-                                            ></Image>
-                                            <View style={{ width: '100%' }}>
-                                                <View style={{
-                                                    width: '100%',
-                                                    flexDirection: 'row',
-                                                    flexWrap: 'wrap',
-                                                    gap: 4
-                                                }}>
-                                                    {mes.media.map(m => {
-                                                        return m.type === "image"
-                                                            ? <Image style={{ width: '49%', borderRadius: 16 }} height={92} source={{ uri: m.url }}></Image>
-                                                            : 
-                                                            <VideoMessage 
-                                                                player={player} 
-                                                                width={'49%'} 
-                                                                height={92} 
-                                                                isActive={m.url === activeVideoUrl}
-                                                                onPress={() => setActiveVideoUrl(m.url)}
-                                                                onLongPress={() => null}
-                                                                play={togglePlay}
-                                                                rewind={rewind}
-                                                                forward={forward}
-                                                                currentTime={videoCurrentTime}
-                                                                duration={videoDuration}
-                                                            />
-                                                    })}
-                                                </View>
-                                                <Text style={{ color: COLORS.textPrimary, fontWeight: 700, fontSize: 12 }}>{mes.sentAt}</Text>
-                                            </View>
-                                        </View>
-                                    }
-                                }
-
-                                return (
-                                    <View
-                                        style={{ marginTop: 8, marginBottom: 8, gap: 8, flexDirection: 'row', alignItems: 'flex-end', maxWidth: '80%' }}
-                                        key={mes.messageId}
-                                    >
-                                        <Image
-                                            source={{ uri: kaChatProfile?.avatarUrl }}
-                                            width={32}
-                                            height={32}
-                                            style={{ borderRadius: 50 }}
-                                        ></Image>
-                                        <View>
-                                            <Pressable style={({ pressed }) => ({
-                                                borderBottomLeftRadius: 5, 
-                                                padding: 16, 
-                                                borderRadius: 16, 
-                                                backgroundColor: pressed ? 'rgba(0,0,0,0.1)' : COLORS.primaryTint,
-                                                transform: [{ scale: pressed ? 0.9 : 1 }]
-                                            })}>
-                                                <Text style={{ color: COLORS.textPrimary }}>{mes.text_message}</Text>
-                                            </Pressable>
-                                            <Text style={{ color: COLORS.textPrimary, fontWeight: 700, fontSize: 12 }}>{mes.sentAt}</Text>
-                                        </View>
-                                    </View>
-                                );
-                            }
-                        })}
-                    </ScrollView>
+                    </FlatList>
                     <View>
                         {editMessageMode && <View style={{ paddingHorizontal: 16, paddingVertical: 8, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                             <Text
