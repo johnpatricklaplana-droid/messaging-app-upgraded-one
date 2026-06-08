@@ -129,8 +129,8 @@ export default function Messages() {
                                     source={{ uri: decodeURIComponent(message.conversationAvatar) }} 
                                 />
                                 <View>
-                                    <Text style={{ color: message.isRead ? COLORS.textPrimary : COLORS.primary, fontSize: 18, fontWeight: 600, }}>{message?.conversationName}</Text>
-                                    <Text numberOfLines={1} style={{ color: message.isRead ? COLORS.textMuted : COLORS.primary, maxWidth: '80%' }}>{message?.senderName}: {message?.lastMessage}</Text>
+                                    <Text style={{ color: message.isRead ? COLORS.textPrimary : COLORS.primary, fontSize: 16, fontWeight: 600, }}>{message?.conversationName}</Text>
+                                    <Text numberOfLines={1} style={{ color: message.isRead ? COLORS.textMuted : COLORS.primary, fontSize: 12, maxWidth: '80%' }}>{message?.senderName}: {message?.lastMessage}</Text>
                                 </View>
                             </View>
                             <Text numberOfLines={1} style={{ color: COLORS.textMuted, textAlign: 'right', width: 56 }}>{message?.lastMessageTime}</Text>

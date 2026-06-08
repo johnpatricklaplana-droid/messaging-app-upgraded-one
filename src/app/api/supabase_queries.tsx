@@ -108,6 +108,10 @@ export async function getGroupConversation() {
             isRead: d.is_read
         });
     });
+
+    console.log("I don't even know");
+    console.log(data);
+    console.log(error);
    
     return directConv;
 }

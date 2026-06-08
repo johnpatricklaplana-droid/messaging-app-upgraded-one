@@ -1184,7 +1184,7 @@ export default function Chat() {
                                         lineHeight: 20, 
                                         fontWeight: 700, 
                                         color: COLORS.textPrimary, 
-                                        fontSize: 16,
+                                        fontSize: 12,
                                         width: '100%',
                                     }}>
                                         {kaChatProfile?.name}
