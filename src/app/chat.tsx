@@ -27,6 +27,7 @@ import { Animated, DimensionValue, Image, Keyboard, KeyboardEvent, Pressable, Sc
 import { FlatList } from "react-native-gesture-handler";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { uploadMedia } from '../../App.js';
+import { createConversation } from "./api/supabase_queries";
 import { formatMessageTime } from "./helper.tsx/formatDate";
 
 function VideoMessage({ 
@@ -292,6 +293,7 @@ export default function Chat() {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
     const route = useRoute();
     const { conversationIdFromMessages } = route.params as { conversationIdFromMessages: string; };
+    const { otherSideId } = route.params as { otherSideId: string };
 
     interface Message {
         sentAt: string;
@@ -337,8 +339,6 @@ export default function Chat() {
         player.loop = false;
         player.play();
     });
-
-    console.log(player.status);
 
     useEffect(() => {
         const interval = setInterval(() => {
@@ -475,7 +475,7 @@ export default function Chat() {
             .lt('created_at', currentOldersMessage)
             .limit(10);
 
-        setCurrentOldestMessage(data?.[data.length - 1].created_at);
+        setCurrentOldestMessage(data?.[data.length - 1]?.created_at ?? null);
 
         const oldies = (data?.map((mes: any) => {
 
@@ -514,9 +514,11 @@ export default function Chat() {
             .order('created_at', { ascending: false })
             .limit(10);
 
+            console.log("saan ba?");
         console.log(data);
+        console.log(error);
 
-        setCurrentOldestMessage(data?.[data.length - 1].created_at);
+        setCurrentOldestMessage(data?.[data.length - 1]?.created_at ?? null);
         
         setMessages((data?.map((mes: any) => {
 
@@ -1046,9 +1048,9 @@ export default function Chat() {
 
     const sendMessage = async () => {
         if(!conversationId) {
-            // createConversation();
-            console.log("NO CONVERSATION YET");
+            await createConversation(myId!, otherSideId);
         }
+
         const { data, error } = await supabase
             .from('messages')
             .insert({
@@ -1169,7 +1171,7 @@ export default function Chat() {
                                 source={{ uri: kaChatProfile?.avatarUrl }}
                                 height={50}
                                 width={50}
-                                style={{ borderRadius: 50, borderColor: COLORS.tabBorder, borderWidth: 1 }}
+                                style={{ borderRadius: 50, borderColor: COLORS.primary, borderWidth: 1 }}
                             />
                             <TouchableOpacity 
                                 style={{ flex: 1 }}
@@ -1234,7 +1236,7 @@ export default function Chat() {
                                 })}
                                 onPress={pickImages}
                             >
-                                <ImageIcon color={COLORS.textSecondary}></ImageIcon>
+                                <ImageIcon color={COLORS.primary}></ImageIcon>
                             </Pressable>
                             <View style={{ flex: 1, position: 'relative', flexDirection: "row", alignItems: 'center', gap: 8, backgroundColor: COLORS.inputs, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 16 }}>
                                 <TextInput

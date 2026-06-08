@@ -111,3 +111,14 @@ export async function getGroupConversation() {
    
     return directConv;
 }
+
+export async function createConversation(myId: string, otherSideId: string) {
+    const { data, error } = await supabase.rpc('create_direct_conversation', {
+        p_participant_1: myId,
+        p_participant_2: otherSideId
+    });
+
+    console.log("WHERE IS THE LOVE");
+    console.log(data);
+    console.log(error);
+}

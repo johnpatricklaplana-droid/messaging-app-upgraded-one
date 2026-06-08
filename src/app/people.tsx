@@ -19,7 +19,7 @@ export default function People () {
 
     type RootStackParamList = {
         'Chat': {
-            myId: string | null, otherSideId: string
+            otherSideId: string
         }
     };
 
@@ -36,14 +36,22 @@ export default function People () {
     const [people, setPeople] = useState<People[]>([]);
 
     useEffect(() => {
+
+        if(!myId) return;
+
         const getPeople = async () => {
-            const { data, error } = await supabase.from('profiles').select('*');
+            const { data, error } = await supabase.rpc('get_profiles_without_conversation');
+
+            console.log("DITO?");
+            console.log(data);
+            console.log(error);
+
             setPeople(data ?? []);
         };
          
         getPeople();
 
-    }, []);
+    }, [myId]);
 
     return (
         <SafeAreaView edges={['top']} style={{ paddingHorizontal: 16 }}>
@@ -75,7 +83,7 @@ export default function People () {
                             style={{ 
                                 flexShrink: 0
                             }}
-                            onPress={() => navigation.navigate('Chat', { myId: myId ?? null, otherSideId: p.id })}
+                            onPress={() => navigation.navigate('Chat', { otherSideId: p.id })}
                         >   
                             <MessageCircleHeartIcon color={COLORS.primary} size={32}></MessageCircleHeartIcon>
                         </Pressable>

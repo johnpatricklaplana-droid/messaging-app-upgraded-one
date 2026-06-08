@@ -14,8 +14,6 @@ export default function Messages() {
 
     const COLORS = useTheme();
 
-    console.log(COLORS);
-
     const user = useUser();
 
     const myId = user.user?.id;
@@ -97,9 +95,9 @@ export default function Messages() {
                         <Pressable 
                             onPress={() => navigation.navigate("CreateGroupChat")}
                         >
-                            <UserPlus width={22} height={22} color={COLORS.textSecondary}></UserPlus>
+                            <UserPlus width={22} height={22} color={COLORS.primary}></UserPlus>
                         </Pressable>
-                        <MoreVertical width={22} color={COLORS.textSecondary}></MoreVertical>
+                        <MoreVertical width={22} color={COLORS.primary}></MoreVertical>
                     </View>
                 </View>
                 <View style={{ paddingHorizontal: 24 }}>
