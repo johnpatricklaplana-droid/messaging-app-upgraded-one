@@ -3,7 +3,7 @@ import { useTheme } from "@/hooks/use-theme";
 import { supabase } from "@/lib/supabase";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { Search } from 'lucide-react-native';
+import { MessageCircleHeartIcon, Search } from 'lucide-react-native';
 import { useEffect, useState } from "react";
 import { Image, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { Timestamp } from "react-native-reanimated/lib/typescript/commonTypes";
@@ -57,22 +57,27 @@ export default function People () {
                 {people.map(p => 
                     <View
                         key={p.id}
-                        style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderColor: COLORS.divider, borderBottomWidth: 1, padding: 16 }}
+                        style={{ 
+                            flexDirection: 'row', 
+                            justifyContent: 'space-between', 
+                            alignItems: 'center', 
+                            borderColor: COLORS.divider, 
+                            borderBottomWidth: 1, 
+                            padding: 16,
+                            width: '100%'
+                        }}
                     >
-                        <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+                        <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center', flex: 1, flexShrink: 1 }}>
                             <Image width={50} height={50} style={{ borderRadius: 50 }} source={{ uri: p.avatar_url }}></Image>
-                            <Text style={{ color: COLORS.textPrimary, fontSize: 16 }}>{p.full_name}</Text>
+                            <Text numberOfLines={2} style={{ color: COLORS.textPrimary, flex: 1, flexShrink: 1, fontSize: 16 }}>{p.full_name}</Text>
                         </View>
                         <Pressable 
                             style={{ 
-                                backgroundColor: COLORS.primary, 
-                                paddingHorizontal: 16, 
-                                paddingVertical: 8, 
-                                borderRadius: 16 
+                                flexShrink: 0
                             }}
                             onPress={() => navigation.navigate('Chat', { myId: myId ?? null, otherSideId: p.id })}
                         >   
-                            <Text style={{ fontWeight: 700, color: COLORS.textPrimary }}>Message</Text>
+                            <MessageCircleHeartIcon color={COLORS.primary} size={32}></MessageCircleHeartIcon>
                         </Pressable>
                     </View>
                 )}

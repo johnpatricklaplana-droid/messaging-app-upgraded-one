@@ -3,6 +3,7 @@ import { useTheme } from "@/hooks/use-theme";
 import { supabase } from "@/lib/supabase";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { StatusBar } from "expo-status-bar";
 import { MoreVertical, UserPlus } from 'lucide-react-native';
 import { useEffect, useState } from "react";
 import { Image, Pressable, ScrollView, Text, TextInput, View } from "react-native";
@@ -88,6 +89,7 @@ export default function Messages() {
 
     return (
         <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: COLORS.background }}>
+            <StatusBar style={'auto'}></StatusBar>
             <ScrollView contentContainerStyle={{ }}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 24, paddingBottom: 0 }}>
                     <Text style={{ color: COLORS.textPrimary, fontSize: 32, fontWeight: 700 }}>Messages</Text>

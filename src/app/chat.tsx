@@ -3,6 +3,7 @@ import { useTheme } from "@/hooks/use-theme";
 import { supabase } from "@/lib/supabase";
 import Slider from '@react-native-community/slider';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import * as ImagePicker from 'expo-image-picker';
 import { useVideoPlayer, VideoPlayer, VideoView } from 'expo-video';
 import {
@@ -284,7 +285,11 @@ export default function Chat() {
 
     }
 
-    const navigation = useNavigation();
+    type RootStackParamList = {
+        ConversationInformation: undefined;
+    };
+
+    const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
     const route = useRoute();
     const { conversationIdFromMessages } = route.params as { conversationIdFromMessages: string; };
 
@@ -1141,7 +1146,9 @@ export default function Chat() {
     }
 
     return (
-        <SafeAreaView style={{ backgroundColor: COLORS.background, flex: 1 }}>
+        <SafeAreaView 
+            style={{ backgroundColor: COLORS.background, flex: 1 }}
+        >
                 <Animated.View
                     style={{ flex: 1, paddingBottom: keyboardHeight }}
                 >
@@ -1167,6 +1174,7 @@ export default function Chat() {
                             <TouchableOpacity 
                                 style={{ flex: 1 }}
                                 activeOpacity={0.5}
+                                onPress={() => navigation.navigate('ConversationInformation')}
                             >
                                 <Text 
                                     numberOfLines={1}
@@ -1174,7 +1182,7 @@ export default function Chat() {
                                         lineHeight: 20, 
                                         fontWeight: 700, 
                                         color: COLORS.textPrimary, 
-                                        fontSize: 22,
+                                        fontSize: 16,
                                         width: '100%',
                                     }}>
                                         {kaChatProfile?.name}

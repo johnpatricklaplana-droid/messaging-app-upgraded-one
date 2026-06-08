@@ -1,3 +1,4 @@
+import ConversationInformation from '@/app/conversationInformation';
 import { useTheme } from '@/hooks/use-theme';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -165,6 +166,7 @@ export default function TabLayout() {
                         <RootStack.Screen name="Login" component={LoginScreen} />
                     )}
                     <RootStack.Screen name='Chat' component={Chat} />
+                    <RootStack.Screen options={{ headerShown: true, title: 'hehe', headerStyle: { backgroundColor: COLORS.background }, headerTintColor: COLORS.primary, headerTitleStyle: { color: COLORS.primary, textAlign: 'center', width: '100%' } }} name='ConversationInformation' component={ConversationInformation} />
                     <RootStack.Screen options={{ headerTintColor: COLORS.textPrimary, headerShown: true, headerStyle: { backgroundColor: COLORS.background, borderColor: COLORS.divider, borderBottomWidth: 1 } }} name='CreateGroupChat' component={CreateGroupChat} />
                 </RootStack.Navigator>
             </UserProvider>
