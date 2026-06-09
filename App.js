@@ -73,9 +73,9 @@ export async function uploadMedia(result, conversationId, myId) {
     console.log(response);
 
     if (response.status === 200) {
-        console.log("TODO");
+        return { status: 'success' };
     } else {
-        console.log("TODO: ERROR MESSAGE HAPPENS");
+        return { status: 'failed' };
     }
 }
 

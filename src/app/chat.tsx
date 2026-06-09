@@ -1,3 +1,4 @@
+import SendingImageBubble from "@/components/loadingPlaceholders";
 import { useUser } from "@/context/UserContext";
 import { useTheme } from "@/hooks/use-theme";
 import { supabase } from "@/lib/supabase";
@@ -272,20 +273,6 @@ export default function Chat() {
         };
     }, []);
 
-    const pickImages = async () => {
-        const result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ['images', 'videos'],
-            allowsMultipleSelection: true,
-            quality: 1,
-            selectionLimit: 20
-        });
-        
-        if(!result.canceled) {
-            uploadMedia(result, conversationId, myId);
-        }
-
-    }
-
     type RootStackParamList = {
         ConversationInformation: undefined;
     };
@@ -334,6 +321,38 @@ export default function Chat() {
     const [videoCurrentTime, setVideoCurrentTime] = useState<number>(0);
     const [videoDuration, setVideoDuration] = useState<number>(0);
     const [currentOldersMessage, setCurrentOldestMessage] = useState<string | null>(null);
+    const [sendingImage, setSendingImage] = useState(false);
+
+    const pickImages = async () => {
+        const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ['images', 'videos'],
+            allowsMultipleSelection: true,
+            quality: 1,
+            selectionLimit: 20
+        });
+
+        if (!result.canceled) {
+
+            setSendingImage(true);
+
+            const status = await uploadMedia(result, conversationId, myId);
+
+            console.log(status);
+
+            if (status.status === 'success') {
+                console.log("todo");
+                setSendingImage(false);
+                return;
+            }
+
+            if (status.status === "failed") {
+                setSendingImage(false);
+                console.log("failed");
+                return;
+            }
+        }
+
+    }
 
     const player = useVideoPlayer(activeVideoUrl, player => {
         player.loop = false;
@@ -1016,22 +1035,18 @@ export default function Chat() {
 
                 let me: boolean;
 
-                console.log("MEDIA REAL TIME");
-                console.log(data);
-                console.log(error);
-
                 if(data.sender_id === myId) {
                     me = true;
                 } else {
                     me = false;
                 }
 
-                 setMessages(prev => { 
+                setMessages(prev => { 
                     const alreadyExist = prev.find(pre => pre.messageId === data.id);
 
                     if(alreadyExist) return prev;
 
-                    return [...prev, {
+                    return [{
                      messageId: data.id,
                      sender_id: data.sender_id,
                      sentAt: formatMessageTime(data.created_at),
@@ -1041,7 +1056,7 @@ export default function Chat() {
                      media: data.message_media,
                      senderName: data.profiles.full_name,
                      senderProfilePic: data.profiles.avatar_url
-                 }]
+                    }, ...prev]
                 });
 
             })
@@ -1217,6 +1232,7 @@ export default function Chat() {
                         renderItem={({ item }) => renderMessage(item)}
                     >
                     </FlatList>
+                    {sendingImage && <SendingImageBubble />}
                     <View>
                         {editMessageMode && <View style={{ paddingHorizontal: 16, paddingVertical: 8, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                             <Text
