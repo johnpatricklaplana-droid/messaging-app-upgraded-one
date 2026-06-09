@@ -1005,13 +1005,20 @@ export default function Chat() {
                 table: 'message_media'
             },
              async (payload: any) => {
-                const { data, error } = await supabase
-                    .from('messages')
-                    .select('*, message_media(*)')
-                    .eq('id', payload.new.message_id)
-                    .single();
+                console.log('what is inside payload');
+                console.log(payload);
+                 const { data, error } = await supabase
+                     .from('messages')
+                     .select('*, message_media(*), profiles(*)')
+                     .eq('conversation_id', conversationId)
+                     .eq('id', payload.new.message_id)
+                     .single();
 
                 let me: boolean;
+
+                console.log("MEDIA REAL TIME");
+                console.log(data);
+                console.log(error);
 
                 if(data.sender_id === myId) {
                     me = true;
@@ -1060,6 +1067,7 @@ export default function Chat() {
             });
 
         console.log("HERE");
+        console.log(data);
         console.log(error);
         
         setTextMessage("");
