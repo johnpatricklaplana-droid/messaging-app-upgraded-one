@@ -39,8 +39,6 @@ Deno.serve(async (req) => {
         .eq('id', conversationId)
         .single();
 
-    console.log(conversation);
-
     if(conversation.is_group) {
         const { data: member, error: memberError } = await supabaseClient.rpc('is_conversation_member', {
             conv_id: conversationId
@@ -54,10 +52,6 @@ Deno.serve(async (req) => {
                 { status: 401 }
             );
         }
-
-        console.log('members_group');
-        console.log(member);
-        console.log(memberError);
     } else {
         const { data: direct_convo, error: direct_error } = await supabaseClient  
             .from('direct_conversation')
@@ -73,9 +67,6 @@ Deno.serve(async (req) => {
                 { status: 401 }
             );
         }
-        console.log('direct_convo');
-        console.log(direct_convo);
-        console.error(direct_error);
     }
 
     let messageIdForDeletion;
@@ -92,10 +83,6 @@ Deno.serve(async (req) => {
             })
             .select('id')
             .single();
-    
-        console.log('ID');
-        console.log(message);
-        console.error(errorMessage);
 
         if(errorMessage) throw errorMessage;
     

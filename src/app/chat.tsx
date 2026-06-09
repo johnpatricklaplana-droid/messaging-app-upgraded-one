@@ -468,7 +468,6 @@ export default function Chat() {
         messagesRef.current = messages;
     }, [messages]);
 
-
     useEffect(() => {
         if(!conversationIdFromMessages) return;
         const getMessagesIfExist = async () => {
@@ -532,10 +531,6 @@ export default function Chat() {
             .eq('conversation_id', conversationId)
             .order('created_at', { ascending: false })
             .limit(10);
-
-            console.log("saan ba?");
-        console.log(data);
-        console.log(error);
 
         setCurrentOldestMessage(data?.[data.length - 1]?.created_at ?? null);
         
